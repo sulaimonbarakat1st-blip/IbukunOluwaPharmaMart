@@ -1,0 +1,48 @@
+﻿@{
+    ViewData["Title"] = "Home";
+}
+<style>
+.hero{
+  position:relative;
+  height:78vh;
+  min-height:480px;
+  background: url('/images/pharma-hero.jpg') center center/cover no-repeat;
+  border-radius:0 0 22px 22px;
+  overflow:hidden;
+}
+.welcome-top{
+  position:absolute; top:0; left:0; right:0; z-index:5;
+  background:linear-gradient(135deg,#0a5a2f,#0f8a4a);
+  color:white;
+  padding:14px 24px;
+  display:flex; justify-content:space-between; align-items:center;
+}
+.hero-buttons{
+  position:absolute; bottom:10%; left:6%; z-index:3;
+}
+.kpi-card{border:0; border-radius:18px; box-shadow:0 8px 30px rgba(0,0,0,.06); padding:20px; text-align:center}
+</style>
+
+<div class="hero">
+    <!-- Welcome now at TOP of picture -->
+    <div class="welcome-top">
+        <div>
+            <div class="fw-bold" style="font-size:18px">Welcome to IbukunOluwa Pharma Mart</div>
+            <small class="opacity-75">Your health is our priority. Manage inventory, sales and expiry with confidence.</small>
+        </div>
+        <a href="/Products/Create" class="btn btn-light rounded-pill fw-bold px-4">+ Add New Drug</a>
+    </div>
+
+    <div class="hero-buttons d-flex gap-2">
+        <a href="/Products" class="btn btn-success rounded-pill px-4 fw-bold shadow">💊 View Stock</a>
+        <a href="/Sales/Report" class="btn btn-light rounded-pill px-4 fw-bold shadow">📊 Sales Report</a>
+    </div>
+</div>
+
+<div class="container mt-4">
+    <div class="row g-3">
+        <div class="col-md-4"><div class="kpi-card"><h5 class="fw-bold">💊 Genuine Drugs</h5><p class="text-muted small mb-0">All products verified with NAFDAC No, Batch No and Expiry tracking</p></div></div>
+        <div class="col-md-4"><div class="kpi-card"><h5 class="fw-bold">🛡️ Safe & Trusted</h5><p class="text-muted small mb-0">IbukunOluwa PharmaMart ensures safe dispensing and low stock alerts</p></div></div>
+        <div class="col-md-4"><div class="kpi-card"><h5 class="fw-bold">📦 Fast Sales</h5><p class="text-muted small mb-0">Instant receipt generation with REC- number and total sales analytics</p></div></div>
+    </div>
+</div>

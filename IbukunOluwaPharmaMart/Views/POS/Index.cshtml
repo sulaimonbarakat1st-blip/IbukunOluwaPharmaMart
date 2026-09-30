@@ -1,0 +1,69 @@
+﻿@model List<IbukunOluwaPharmaMart.Models.Product>
+@{
+    ViewData["Title"] = "POS - Sell";
+}
+
+<div class="row">
+    <div class="col-md-8">
+        <h3>🛒 POS - IbukunOluwa PharmaMart</h3>
+        <input id="search" class="form-control form-control-lg mb-3" placeholder="Type or scan drug name..." autofocus />
+        <div class="row" id="productList">
+            @foreach (var p in Model)
+            {
+                <div class="col-md-6 col-lg-4 mb-2 prod-card" data-name="@p.Name.ToLower()" data-id="@p.Id">
+                    <div class="card p-2 shadow-sm" style="cursor:pointer" onclick="addToCart(@p.Id,'@p.Name',@p.SellingPrice)">
+                        <b>@p.Name</b><br>
+                        <small>@p.Dosage - ₦@p.SellingPrice</small><br>
+                        <small class="text-success">In Stock: @p.Quantity</small>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card p-3 bg-light shadow">
+            <h5>Cart <span id="cartCount" class="badge bg-primary">0</span></h5>
+            <div id="cartItems"><small class="text-muted">Cart empty</small></div>
+            <hr>
+            <h4>Total: ₦<span id="total">0</span></h4>
+            <button class="btn btn-success w-100 btn-lg mt-3" onclick="checkout()">PAY & PRINT</button>
+            <button class="btn btn-outline-danger w-100 mt-2" onclick="clearCart()">Clear</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    let cart = [];
+    function addToCart(id,name,price){
+     let f = cart.find(x=>x.Id===id);
+     if(f) f.Qty++; else cart.push({Id:id, Qty:1, Price:price, Name:name});
+     render();
+    }
+    function render(){
+     let html=''; let total=0; let count=0;
+     cart.forEach((c,i)=>{
+       let sub=c.Qty*c.Price; total+=sub; count+=c.Qty;
+       html+=`<div class="d-flex justify-content-between border-bottom py-2"><div>${c.Name} x${c.Qty}</div><div>₦${sub} <button class="btn btn-sm btn-danger ms-2" onclick="cart.splice(${i},1);render()">x</button></div></div>`;
+     });
+     document.getElementById('cartItems').innerHTML=html||'<small class="text-muted">Cart empty</small>';
+     document.getElementById('total').innerText=total;
+     document.getElementById('cartCount').innerText=count;
+    }
+    function clearCart(){cart=[];render();}
+    async function checkout(){
+     if(!cart.length) return alert('Cart empty');
+     const res = await fetch('/POS/Checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cart)});
+     const data = await res.json();
+     if(data.success){
+       alert('SALE SUCCESS!\nReceipt: '+data.receiptNo+'\nTotal: ₦'+document.getElementById('total').innerText);
+       clearCart(); location.reload();
+     } else alert('Error selling');
+    }
+    document.getElementById('search').addEventListener('input',function(){
+     let v=this.value.toLowerCase();
+     document.querySelectorAll('.prod-card').forEach(el=>{
+       el.style.display=el.dataset.name.includes(v)?'block':'none';
+     });
+    });
+</script>

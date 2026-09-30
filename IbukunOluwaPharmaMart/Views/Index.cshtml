@@ -1,0 +1,101 @@
+﻿@model List<IbukunOluwaPharmaMart.Models.Product>
+@{
+    ViewData["Title"] = "POS - Sell Products";
+}
+
+<div class="row">
+    <div class="col-md-7">
+        <h3>IbukunOluwa PharmaMart - POS</h3>
+        <div class="card p-3 shadow">
+            <input type="text" id="searchBox" class="form-control form-control-lg" placeholder="Type product name e.g Paracetamol..." autofocus />
+            <div id="searchResults" class="list-group mt-2"></div>
+            <hr />
+            <h5>Available Products</h5>
+            <div class="row">
+                @foreach (var p in Model)
+                {
+                    <div class="col-md-6 mb-2 product-card" data-name="@p.Name.ToLower()">
+                        <div class="card p-2">
+                            <strong>@p.Name</strong> <small>@p.Dosage</small><br />
+                            <span class="text-success">₦@p.SellingPrice</span> | <small>@p.Quantity left</small>
+                            <button class="btn btn-sm btn-primary mt-1 add-btn" data-id="@p.Id" data-name="@p.Name" data-price="@p.SellingPrice">+ Add</button>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-md-5">
+        <div class="card p-3 shadow" style="background:#f8f0ff">
+            <h4>Cart 🛒 <span id="cartCount" class="badge bg-primary">0</span></h4>
+            <div id="cartItems"></div>
+            <hr />
+            <h3>Total: ₦<span id="total">0.00</span></h3>
+            <button id="checkoutBtn" class="btn btn-success btn-lg w-100 mt-3">Checkout & Print Receipt</button>
+            <button id="clearBtn" class="btn btn-outline-danger w-100 mt-2">Clear Cart</button>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        let cart = [];
+        const searchBox = document.getElementById('searchBox');
+        const searchResults = document.getElementById('searchResults');
+
+        searchBox.addEventListener('input', async function(){
+            let term = this.value.toLowerCase();
+            // Local filter
+            document.querySelectorAll('.product-card').forEach(c=>{
+                c.style.display = c.dataset.name.includes(term)? 'block' : 'none';
+            });
+            // Server search
+            if(term.length >= 2){
+                let res = await fetch('/POS/Search?term=' + term);
+                let data = await res.json();
+                searchResults.innerHTML = '';
+                data.forEach(p=>{
+                    searchResults.innerHTML += `<a href="#" class="list-group-item list-group-item-action add-btn" data-id="${p.id}" data-name="${p.name}" data-price="${p.sellingPrice}"><b>${p.name}</b> - ₦${p.sellingPrice} (${p.quantity} left) ${p.dosage||''}</a>`;
+                });
+            } else { searchResults.innerHTML=''; }
+        });
+
+        document.addEventListener('click', function(e){
+            if(e.target.classList.contains('add-btn')){
+                e.preventDefault();
+                addToCart(parseInt(e.target.dataset.id), e.target.dataset.name, parseFloat(e.target.dataset.price));
+            }
+        });
+
+        function addToCart(id,name,price){
+            let found = cart.find(c=>c.Id===id);
+            if(found) found.Qty++; else cart.push({Id:id, Qty:1, Price:price, Name:name});
+            renderCart();
+        }
+
+        function renderCart(){
+            let html=''; let total=0;
+            cart.forEach((c,i)=>{
+                total += c.Price * c.Qty;
+                html += `<div class="d-flex justify-content-between border-bottom py-2"><span>${c.Name} x ${c.Qty}</span><span>₦${c.Price*c.Qty} <button onclick="removeItem(${i})" class="btn btn-sm btn-danger">x</button></span></div>`;
+            });
+            document.getElementById('cartItems').innerHTML = html || '<small>No items yet</small>';
+            document.getElementById('total').innerText = total.toFixed(2);
+            document.getElementById('cartCount').innerText = cart.length;
+            searchBox.value=''; searchResults.innerHTML=''; searchBox.focus();
+        }
+        function removeItem(i){ cart.splice(i,1); renderCart(); }
+        document.getElementById('clearBtn').onclick = ()=>{ cart=[]; renderCart(); };
+
+        document.getElementById('checkoutBtn').onclick = async ()=>{
+            if(cart.length==0){ alert('Cart empty'); return; }
+            let res = await fetch('/POS/Checkout', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(cart)});
+            let data = await res.json();
+            if(data.success){
+                alert('Sale Complete! Receipt: ' + data.receiptNo);
+                window.print();
+                cart=[]; renderCart(); location.reload();
+            }
+        }
+    </script>
+}

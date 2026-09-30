@@ -1,0 +1,88 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - IbukunOluwa PharmaMart</title>
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <style>
+        body{background:#f7faf8}
+        .sidebar{
+            width:260px; position:fixed; left:0; top:0; bottom:0;
+            background:#ffffff; border-right:1px solid #e8efe9;
+            padding:18px 12px; z-index:1000; overflow-y:auto;
+        }
+        .brand{font-weight:800; color:#0f8a4a; padding:8px 10px; display:flex; align-items:center; gap:8px; font-size:15px}
+        .menu{margin-top:18px}
+        .menu a{
+            display:flex; align-items:center; gap:12px;
+            padding:12px 14px; border-radius:12px; text-decoration:none;
+            color:#23412e; font-weight:600; margin-bottom:6px; transition:.2s;
+        }
+        .menu a:hover{background:#eef7f0; color:#0f8a4a}
+        .menu a.active{background:#0f8a4a; color:white; box-shadow:0 8px 20px rgba(15,138,74,.25)}
+        .content{margin-left:260px; min-height:100vh; position:relative; z-index:1}
+        .topbar{height:58px; background:white; border-bottom:1px solid #e8efe9; display:flex; align-items:center; justify-content:flex-end; padding:0 18px; gap:10px}
+        @@media (max-width: 900px){
+            .sidebar{width:100%; position:relative}
+            .content{margin-left:0}
+        }
+        .pharma-bg {
+            position: fixed;
+            top: 0;
+            left: 260px;
+            right: 0;
+            bottom: 0;
+            background-image: url('/images/pharma-bg.jpg');
+            background-size: cover;
+            background-position: center;
+            opacity: 0.18;
+            z-index: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    @{
+            var isDashboard = Context.Request.Path == "/" || (Context.Request.Path.Value?.ToLower().Contains("dashboard") ?? false);
+        }
+    @if (!isDashboard)
+    {
+        <div class="pharma-bg"></div>
+    }
+
+    <div class="sidebar">
+        <div class="brand"><i class="bi bi-heart-pulse-fill"></i> IbukunOluwa PharmaMart</div>
+        <div class="menu">
+            <a href="/" class="@(Context.Request.Path=="/"?"active":"")"><i class="bi bi-speedometer2 fs-5"></i> Dashboard</a>
+            <a href="/POS/Sell" style="background:#0f8a4a; color:white"><i class="bi bi-cart-fill fs-5"></i> Sell Drugs</a>
+            <a href="/Products" class="@(Context.Request.Path.ToString().Contains("Products") && !Context.Request.Path.ToString().Contains("Create") ?"active":"")"><i class="bi bi-capsule fs-5"></i> Products</a>
+            <a href="/Products"><i class="bi bi-box-seam fs-5"></i> View Stocks</a>
+            <a href="/Sales/Report" class="@(Context.Request.Path.ToString().Contains("Sales")?"active":"")"><i class="bi bi-graph-up-arrow fs-5"></i> Sales Report</a>
+            <a href="/Products/Create" style="background:#c6d651; color:#1e2f0a"><i class="bi bi-plus-circle-fill fs-5"></i> + Add New Drug</a>
+
+            <hr class="my-3" />
+            <small class="text-muted px-3 fw-bold">QUICK ACTIONS</small>
+            <a href="/Products/Create"><i class="bi bi-plus-lg fs-5"></i> New Product</a>
+            <a href="/Sales/Report"><i class="bi bi-receipt fs-5"></i> View Receipts</a>
+        </div>
+    </div>
+
+    <div class="content">
+        <div class="topbar">
+            <span class="small text-muted">IbukunOluwa PharmaMart</span>
+            <span class="badge bg-success rounded-pill">Live</span>
+        </div>
+        <main role="main" style="position:relative; z-index:1;">
+            @RenderBody()
+        </main>
+    </div>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

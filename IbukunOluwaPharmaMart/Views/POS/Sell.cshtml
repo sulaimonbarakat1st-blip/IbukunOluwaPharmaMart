@@ -1,0 +1,127 @@
+﻿@model List<IbukunOluwaPharmaMart.Models.Product>
+@{
+    ViewData["Title"] = "Sell Drugs";
+}
+
+<div class="container mt-3">
+    <div style="background:#0f6d2f;color:white;padding:15px;border-radius:10px;">
+        <h4>💊 Sell Drugs - IbukunOluwa</h4>
+    </div>
+
+    <div class="mt-3 position-relative">
+        <label>Search / Select Drug</label>
+        <select id="drugDropdown" class="form-control form-control-lg" onchange="onDropdownSelect(this)">
+            <option value="">-- Select or type drug name --</option>
+            @foreach(var p in Model.OrderBy(x=>x.Name)){
+                <option value="@p.Id" data-name="@p.Name" data-price="@p.SellingPrice" data-qty="@p.Quantity">@p.Name - @p.Dosage - Qty: @p.Quantity - ₦@p.SellingPrice</option>
+            }
+        </select>
+        
+        <input type="text" id="drugSearch" class="form-control mt-2" placeholder="Or type drug name e.g Dyn...">
+        <div id="suggestions" class="list-group position-absolute w-100 shadow" style="z-index:1000;display:none;max-height:250px;overflow-y:auto;"></div>
+    </div>
+
+    <div class="mt-4">
+        <table class="table table-bordered" id="cartTable">
+            <thead style="background:#eee"><tr><th>Drug</th><th>Qty</th><th>Price</th><th>Total</th><th></th></tr></thead>
+            <tbody></tbody>
+        </table>
+        <h3 class="text-end">Total: ₦<span id="grandTotal">0.00</span></h3>
+    </div>
+
+    <div class="row mt-3">
+        <div class="col-6"><button class="btn btn-warning w-100 btn-lg" onclick="openSuspendModal()">SUSPEND ITEMS</button></div>
+        <div class="col-6"><button class="btn btn-success w-100 btn-lg" onclick="openSellModal()">SELL OUT</button></div>
+    </div>
+</div>
+
+<!-- SELL OUT MODAL -->
+<div id="sellModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:2000;justify-content:center;align-items:center;">
+    <div style="background:white;padding:30px;border-radius:10px;text-align:center;width:90%;max-width:400px;">
+        <h5>Are you sure you want to sell out?</h5>
+        <div class="mt-4 d-flex justify-content-around">
+            <button class="btn btn-secondary px-4" onclick="closeModals()">No</button>
+            <button class="btn btn-success px-4" onclick="confirmSell()">Yes</button>
+        </div>
+    </div>
+</div>
+
+<!-- SUSPEND MODAL -->
+<div id="suspendModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:2000;justify-content:center;align-items:center;">
+    <div style="background:white;padding:30px;border-radius:10px;text-align:center;width:90%;max-width:400px;">
+        <h5>Are you sure you want to suspend items?</h5>
+        <div class="mt-4 d-flex justify-content-around">
+            <button class="btn btn-secondary px-4" onclick="closeModals()">No</button>
+            <button class="btn btn-warning px-4" onclick="confirmSuspend()">Yes</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let cart = [];
+const allProducts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(p => new { id=p.Id, name=p.Name, price=p.SellingPrice, qty=p.Quantity, dosage=p.Dosage })));
+
+// DROPDOWN SELECT
+function onDropdownSelect(sel){
+    if(!sel.value) return;
+    let opt = sel.options[sel.selectedIndex];
+    addToCart(parseInt(opt.value), opt.dataset.name, parseFloat(opt.dataset.price), parseInt(opt.dataset.qty));
+    sel.selectedIndex = 0;
+}
+
+// TYPING SEARCH - shows dropdown list
+document.getElementById('drugSearch').addEventListener('input', function(){
+    let term = this.value.toLowerCase().trim();
+    let box = document.getElementById('suggestions');
+    if(term.length < 1){ box.style.display='none'; return; }
+    
+    let filtered = allProducts.filter(p => p.name.toLowerCase().startsWith(term) || p.name.toLowerCase().includes(term));
+    box.innerHTML='';
+    if(filtered.length==0){ box.style.display='none'; return; }
+    
+    filtered.slice(0,10).forEach(d=>{
+        let a = document.createElement('a');
+        a.className='list-group-item list-group-item-action';
+        a.innerHTML=`<strong>${d.name}</strong> - ${d.dosage||''} - ₦${d.price} (Qty:${d.qty})`;
+        a.onclick=()=>{ addToCart(d.id,d.name,d.price,d.qty); box.style.display='none'; document.getElementById('drugSearch').value=''; };
+        box.appendChild(a);
+    });
+    box.style.display='block';
+});
+
+function addToCart(id,name,price,stock){
+    let ex = cart.find(c=>c.productId==id);
+    if(ex){ if(ex.quantity < stock) ex.quantity++; else alert('Low stock! Only '+stock+' left'); }
+    else cart.push({ productId:id, name:name, price:price, quantity:1, stock:stock });
+    renderCart();
+}
+function renderCart(){
+    let tbody=document.querySelector('#cartTable tbody'); tbody.innerHTML=''; let grand=0;
+    cart.forEach((c,i)=>{
+        let total=c.price*c.quantity; grand+=total;
+        tbody.innerHTML+=`<tr><td>${c.name}</td><td><input type='number' min='1' max='${c.stock}' value='${c.quantity}' onchange='cart[${i}].quantity=parseInt(this.value);renderCart()' style='width:60px'></td><td>₦${c.price}</td><td>₦${total}</td><td><button class='btn btn-sm btn-danger' onclick='cart.splice(${i},1);renderCart()'>x</button></td></tr>`;
+    });
+    document.getElementById('grandTotal').innerText=grand.toFixed(2);
+}
+
+// MODALS
+function openSellModal(){ if(cart.length==0) return alert('Cart empty'); document.getElementById('sellModal').style.display='flex'; }
+function openSuspendModal(){ if(cart.length==0) return alert('Cart empty'); document.getElementById('suspendModal').style.display='flex'; }
+function closeModals(){ document.getElementById('sellModal').style.display='none'; document.getElementById('suspendModal').style.display='none'; }
+
+async function confirmSell(){
+    closeModals();
+    let payload = cart.map(c=>({ productId:c.productId, quantity:c.quantity }));
+    let res = await fetch('/POS/Checkout', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    let data = await res.json();
+    if(data.success){ alert('Sold! Receipt: '+data.receiptNo); location.reload(); } else alert('Failed');
+}
+function confirmSuspend(){
+    localStorage.setItem('suspendedCart', JSON.stringify(cart));
+    closeModals();
+    alert('Items suspended! You can come back and resume later.');
+    cart=[]; renderCart();
+}
+// On load, check if suspended exists
+window.onload=()=>{ let saved=localStorage.getItem('suspendedCart'); if(saved){ if(confirm('You have suspended items. Resume?')){ cart=JSON.parse(saved); renderCart(); localStorage.removeItem('suspendedCart'); } } };
+</script>
