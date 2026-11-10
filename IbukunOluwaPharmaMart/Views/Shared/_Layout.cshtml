@@ -24,7 +24,7 @@
         .menu a:hover{background:#eef7f0; color:#0f8a4a}
         .menu a.active{background:#0f8a4a; color:white; box-shadow:0 8px 20px rgba(15,138,74,.25)}
         .content{margin-left:260px; min-height:100vh; position:relative; z-index:1}
-        .topbar{height:58px; background:white; border-bottom:1px solid #e8efe9; display:flex; align-items:center; justify-content:flex-end; padding:0 18px; gap:10px}
+        .topbar{height:58px; background:white; border-bottom:1px solid #e8efe9; display:flex; align-items:center; justify-content:space-between; padding:0 18px; gap:10px}
         @@media (max-width: 900px){
             .sidebar{width:100%; position:relative}
             .content{margin-left:0}
@@ -46,8 +46,14 @@
 </head>
 <body>
     @{
-            var isDashboard = Context.Request.Path == "/" || (Context.Request.Path.Value?.ToLower().Contains("dashboard") ?? false);
-        }
+        var isDashboard = Context.Request.Path == "/" || (Context.Request.Path.Value?.ToLower().Contains("dashboard") ?? false);
+        var username = Context.Session.GetString("Username");
+        var role = Context.Session.GetString("Role");
+        var fullname = Context.Session.GetString("FullName");
+        var isLoggedIn = !string.IsNullOrEmpty(username);
+        var isCashier = role == "Cashier";
+        var isAdmin = role == "Admin";
+    }
     @if (!isDashboard)
     {
         <div class="pharma-bg"></div>
@@ -57,25 +63,72 @@
         <div class="brand"><i class="bi bi-heart-pulse-fill"></i> IbukunOluwa PharmaMart</div>
         <div class="menu">
             <a href="/" class="@(Context.Request.Path=="/"?"active":"")"><i class="bi bi-speedometer2 fs-5"></i> Dashboard</a>
-            <a href="/POS/Sell" style="background:#0f8a4a; color:white"><i class="bi bi-cart-fill fs-5"></i> Sell Drugs</a>
-            <a href="/Products" class="@(Context.Request.Path.ToString().Contains("Products") && !Context.Request.Path.ToString().Contains("Create") ?"active":"")"><i class="bi bi-capsule fs-5"></i> Products</a>
-            <a href="/Products"><i class="bi bi-box-seam fs-5"></i> View Stocks</a>
-            <a href="/Sales/Report" class="@(Context.Request.Path.ToString().Contains("Sales")?"active":"")"><i class="bi bi-graph-up-arrow fs-5"></i> Sales Report</a>
-            <a href="/Products/Create" style="background:#c6d651; color:#1e2f0a"><i class="bi bi-plus-circle-fill fs-5"></i> + Add New Drug</a>
+            
+            @if(isLoggedIn){
+                <a href="/POS/Sell" style="background:#0f8a4a; color:white"><i class="bi bi-cart-fill fs-5"></i> Sell Drugs</a>
+            }
+
+            @* ADMIN / MANAGER ONLY - Staff CANNOT see these *@
+            @if(isLoggedIn && !isCashier){
+                <a href="/Products"><i class="bi bi-box-seam fs-5"></i> View Stocks</a>
+                <a href="/Products/Create" style="background:#c6d651; color:#1e2f0a"><i class="bi bi-plus-circle-fill fs-5"></i> + Add New Drug</a>
+            }
+
+            @* STAFF CAN: Sales Report - FIXED, moved out of Admin block *@
+            @if(isLoggedIn){
+                <a href="/Sales/Report" class="@(Context.Request.Path.ToString().Contains("Sales")?"active":"")"><i class="bi bi-graph-up-arrow fs-5"></i> Sales Report</a>
+                <a href="/Sales/CloseDay" class="nav-link">🌙 Close Day</a>
+            }
 
             <hr class="my-3" />
             <small class="text-muted px-3 fw-bold">QUICK ACTIONS</small>
-            <a href="/Products/Create"><i class="bi bi-plus-lg fs-5"></i> New Product</a>
-            <a href="/Sales/Report"><i class="bi bi-receipt fs-5"></i> View Receipts</a>
+            
+            @* ADMIN / MANAGER ONLY *@
+            @if(isLoggedIn && !isCashier){
+            }
+
+            @* STAFF CAN: View Receipts + Customers Owing - FIXED *@
+            @if(isLoggedIn){
+                <a href="/Products/MedicineList" class="btn btn-light rounded-pill fw-bold px-4">📋 Medicine List</a>
+                <a href="/POS/Debtors">📒 Customers Owing</a>
+
+            }
+
+            @if(isAdmin){
+                <a href="/Auth/ManageStaff" class="@(Context.Request.Path.ToString().Contains("ManageStaff")?"active":"")"><i class="bi bi-people-fill fs-5"></i> Staff Management</a>
+            }
+
+            @if(!isLoggedIn){
+                <a href="/Auth/Login" style="background:#ff8f00; color:white; margin-top:20px"><i class="bi bi-box-arrow-in-right fs-5"></i> Staff Login</a>
+            }
         </div>
     </div>
 
     <div class="content">
         <div class="topbar">
-            <span class="small text-muted">IbukunOluwa PharmaMart</span>
-            <span class="badge bg-success rounded-pill">Live</span>
+            <div class="d-flex align-items-center gap-2">
+                <span class="small text-muted">IbukunOluwa PharmaMart</span>
+                <span class="badge bg-success rounded-pill">Live</span>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                @if(isLoggedIn){
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="text-end lh-sm">
+                            <div class="small fw-bold">@fullname</div>
+                            <div class="small text-muted" style="font-size:11px">@role • @username</div>
+                        </div>
+                        <div style="width:36px;height:36px;background:#0f8a4a;color:white;border-radius:50%;display:grid;place-items:center;font-weight:700">@fullname?.Substring(0,1).ToUpper()</div>
+                    </div>
+                    <a href="/Auth/Logout" class="btn btn-sm btn-outline-danger rounded-pill"><i class="bi bi-box-arrow-right"></i> Logout</a>
+                } else {
+                    <a href="/Auth/Login" class="btn btn-sm btn-success rounded-pill">Login</a>
+                }
+            </div>
         </div>
         <main role="main" style="position:relative; z-index:1;">
+            @if(TempData["Error"] != null){
+                <div class="alert alert-warning m-3 rounded-3"><i class="bi bi-exclamation-triangle me-2"></i>@TempData["Error"]</div>
+            }
             @RenderBody()
         </main>
     </div>

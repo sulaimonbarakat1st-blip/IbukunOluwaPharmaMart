@@ -1,5 +1,20 @@
-﻿@{
+﻿@inject IbukunOluwaPharmaMart.Data.AppDbContext _context
+@{
     ViewData["Title"] = "Home";
+    var alertDate = DateTime.Today.AddMonths(3);
+
+    // ROLE CHECK ONLY 
+    var role = Context.Session.GetString("Role");
+    var username = Context.Session.GetString("Username");
+    var isLoggedIn = !string.IsNullOrEmpty(username);
+    var isAdmin = role == "Admin";
+    var isManager = role == "Manager";
+    var canManageStock = isAdmin || isManager;
+
+    // Only load expiring drugs if Admin/Manager, so Cashier can't see stock ---
+    var expiringDrugs = canManageStock 
+        ? _context.Products.Where(p => p.ExpiryDate != null && p.ExpiryDate <= alertDate).OrderBy(p => p.ExpiryDate).ToList()
+        : new List<IbukunOluwaPharmaMart.Models.Product>();
 }
 <style>
 .hero{
@@ -24,22 +39,58 @@
 </style>
 
 <div class="hero">
-    <!-- Welcome now at TOP of picture -->
     <div class="welcome-top">
         <div>
             <div class="fw-bold" style="font-size:18px">Welcome to IbukunOluwa Pharma Mart</div>
             <small class="opacity-75">Your health is our priority. Manage inventory, sales and expiry with confidence.</small>
         </div>
-        <a href="/Products/Create" class="btn btn-light rounded-pill fw-bold px-4">+ Add New Drug</a>
+        @* --- FIXED: Add New Drug only for Admin/Manager --- *@
+        @if (canManageStock)
+        {
+            <a href="/Products/Create" class="btn btn-light rounded-pill fw-bold px-4">+ Add New Drug</a>
+        }
     </div>
 
     <div class="hero-buttons d-flex gap-2">
-        <a href="/Products" class="btn btn-success rounded-pill px-4 fw-bold shadow">💊 View Stock</a>
-        <a href="/Sales/Report" class="btn btn-light rounded-pill px-4 fw-bold shadow">📊 Sales Report</a>
+        @* --- FIXED: View Stock only for Admin/Manager --- *@
+        @if (canManageStock)
+        {
+            <a href="/Products" class="btn btn-success rounded-pill px-4 fw-bold shadow">💊 View Stock</a>
+        }
+        @* --- FIXED: Sales Report for ALL logged in users - Admin + Staff --- *@
+        @if (isLoggedIn)
+        {
+            <a href="/Sales/Report" class="btn btn-light rounded-pill px-4 fw-bold shadow">📊 Sales Report</a>
+        }
     </div>
 </div>
 
 <div class="container mt-4">
+
+@* --- FIXED: Expiry Alert only for Admin/Manager, because it shows Qty Left --- *@
+@if(canManageStock && expiringDrugs.Any()){
+<div class="alert alert-danger border-2 shadow-sm rounded-4 mb-4">
+    <h5 class="fw-bold">🚨 Expiry Alert - @expiringDrugs.Count drugs expiring in next 3 months</h5>
+    <div class="table-responsive">
+    <table class="table table-sm table-bordered bg-white mb-0 rounded">
+        <tr><th>Drug</th><th>Qty Left</th><th>Expiry Date</th><th>Status</th></tr>
+        @foreach(var d in expiringDrugs){
+            var isExpired = d.ExpiryDate < DateTime.Today;
+            <tr class="@(isExpired ? "table-danger" : "table-warning")">
+                <td><b>@d.Name</b> - @d.Dosage</td>
+                <td>@d.Quantity</td>
+                <td>@d.ExpiryDate?.ToString("dd MMM yyyy")</td>
+                <td>
+                    @if(isExpired){<span class="badge bg-dark">EXPIRED</span>}
+                    else {<span class="badge bg-danger">Expires in @((d.ExpiryDate - DateTime.Today).Value.Days) days</span>}
+                </td>
+            </tr>
+        }
+    </table>
+    </div>
+</div>
+}
+
     <div class="row g-3">
         <div class="col-md-4"><div class="kpi-card"><h5 class="fw-bold">💊 Genuine Drugs</h5><p class="text-muted small mb-0">All products verified with NAFDAC No, Batch No and Expiry tracking</p></div></div>
         <div class="col-md-4"><div class="kpi-card"><h5 class="fw-bold">🛡️ Safe & Trusted</h5><p class="text-muted small mb-0">IbukunOluwa PharmaMart ensures safe dispensing and low stock alerts</p></div></div>

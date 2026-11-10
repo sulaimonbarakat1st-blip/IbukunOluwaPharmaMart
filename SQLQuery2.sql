@@ -1,0 +1,1 @@
+﻿SELECT * FROM SuspendedSales ORDER BY Id DESC

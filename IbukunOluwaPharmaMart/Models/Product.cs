@@ -26,5 +26,8 @@ namespace IbukunOluwaPharmaMart.Models
 
         [NotMapped]
         public decimal Price { get { return SellingPrice; } set { SellingPrice = value; } }
+        public decimal RetailPrice { get; set; }
+        public decimal WholesalePrice { get; set; }
+        public string? ImageUrl { get; set; }
     }
 }

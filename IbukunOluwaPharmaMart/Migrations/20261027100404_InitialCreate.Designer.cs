@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace IbukunOluwaPharmaMart.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260930091939_InitialCreate")]
+    [Migration("20261027100404_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -40,6 +40,28 @@ namespace IbukunOluwaPharmaMart.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Categories");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            Name = "Pharmacy"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            Name = "Supermarket"
+                        },
+                        new
+                        {
+                            Id = 3,
+                            Name = "Drinks"
+                        },
+                        new
+                        {
+                            Id = 4,
+                            Name = "Toiletries"
+                        });
                 });
 
             modelBuilder.Entity("IbukunOluwaPharmaMart.Models.Product", b =>
@@ -99,8 +121,27 @@ namespace IbukunOluwaPharmaMart.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<decimal>("AmountPaid")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("Balance")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("CustomerName")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("CustomerPhone")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("Date")
                         .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsFullyPaid")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("PaymentType")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("ReceiptNo")
                         .IsRequired()
@@ -143,10 +184,64 @@ namespace IbukunOluwaPharmaMart.Migrations
                     b.ToTable("SaleItems");
                 });
 
+            modelBuilder.Entity("IbukunOluwaPharmaMart.Models.SuspendedSale", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("DateSuspended")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SuspendedNo")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SuspendedSales");
+                });
+
+            modelBuilder.Entity("IbukunOluwaPharmaMart.Models.SuspendedSaleItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("ProductId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ProductName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SuspendedSaleId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SuspendedSaleId");
+
+                    b.ToTable("SuspendedSaleItems");
+                });
+
             modelBuilder.Entity("IbukunOluwaPharmaMart.Models.Product", b =>
                 {
                     b.HasOne("IbukunOluwaPharmaMart.Models.Category", "Category")
-                        .WithMany()
+                        .WithMany("Products")
                         .HasForeignKey("CategoryId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -162,16 +257,39 @@ namespace IbukunOluwaPharmaMart.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("IbukunOluwaPharmaMart.Models.Sale", null)
+                    b.HasOne("IbukunOluwaPharmaMart.Models.Sale", "Sale")
                         .WithMany("Items")
                         .HasForeignKey("SaleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Product");
+
+                    b.Navigation("Sale");
+                });
+
+            modelBuilder.Entity("IbukunOluwaPharmaMart.Models.SuspendedSaleItem", b =>
+                {
+                    b.HasOne("IbukunOluwaPharmaMart.Models.SuspendedSale", "SuspendedSale")
+                        .WithMany("Items")
+                        .HasForeignKey("SuspendedSaleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("SuspendedSale");
+                });
+
+            modelBuilder.Entity("IbukunOluwaPharmaMart.Models.Category", b =>
+                {
+                    b.Navigation("Products");
                 });
 
             modelBuilder.Entity("IbukunOluwaPharmaMart.Models.Sale", b =>
+                {
+                    b.Navigation("Items");
+                });
+
+            modelBuilder.Entity("IbukunOluwaPharmaMart.Models.SuspendedSale", b =>
                 {
                     b.Navigation("Items");
                 });

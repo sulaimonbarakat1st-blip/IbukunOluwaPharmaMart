@@ -1,50 +1,53 @@
 ﻿@model List<IbukunOluwaPharmaMart.Models.Sale>
 @{
-    ViewData["Title"] = "Sales Report";
+    ViewData["Title"] = "Today's Sales";
 }
 <style>
-.kpi{border:0; border-radius:18px; box-shadow:0 8px 25px rgba(0,0,0,.06)}
+    .kpi {
+        border: 0;
+        border-radius: 18px;
+        box-shadow: 0 8px 25px rgba(0,0,0,.06)
+    }
 </style>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="fw-bold">📊 Sales Report</h3>
-    <button onclick="window.print()" class="btn btn-dark rounded-pill">🖨️ Print</button>
+    <h3 class="fw-bold">📊 Today's Sales - @DateTime.Today.ToString("dd MMM yyyy")</h3>
+    <div>
+        <button onclick="window.print()" class="btn btn-dark rounded-pill">🖨️ Print</button>
+        <a href="/Sales/History" class="btn btn-outline-success rounded-pill fw-bold">📜 View History</a>
+        <a href="/Sales/CloseDay" class="btn btn-warning rounded-pill fw-bold">🌙 Close Day</a>
+    </div>
 </div>
 
 <div class="row g-3 mb-4">
-    <div class="col-md-3"><div class="card kpi p-3 bg-success text-white"><small>Total Revenue</small><h3 class="fw-bold">₦@ViewBag.TotalSales.ToString("N2")</h3></div></div>
-    <div class="col-md-3"><div class="card kpi p-3"><small>Items Sold</small><h3 class="fw-bold">@ViewBag.TotalItems</h3></div></div>
-    <div class="col-md-3"><div class="card kpi p-3"><small>Transactions</small><h3 class="fw-bold">@ViewBag.TotalTransactions</h3></div></div>
-    <div class="col-md-3"><div class="card kpi p-3"><small>Top Drug</small><h5 class="fw-bold">@ViewBag.TopProduct</h5></div></div>
-</div>
-
-<div class="card border-0 shadow-sm rounded-4 p-3 mb-4">
-    <form method="get" class="row g-2">
-        <div class="col-md-5"><label class="fw-bold">From</label><input type="date" name="from" value="@ViewBag.From" class="form-control rounded-3"/></div>
-        <div class="col-md-5"><label class="fw-bold">To</label><input type="date" name="to" value="@ViewBag.To" class="form-control rounded-3"/></div>
-        <div class="col-md-2 d-flex align-items-end"><button class="btn btn-success rounded-pill w-100">Filter</button></div>
-    </form>
+    <div class="col-md-3"><div class="card kpi p-3 bg-success text-white"><small>Total Revenue (Today)</small><h3 class="fw-bold">₦@ViewBag.TotalSales.ToString("N2")</h3></div></div>
+    <div class="col-md-3"><div class="card kpi p-3"><small>Items Sold (Today)</small><h3 class="fw-bold">@ViewBag.TotalItems</h3></div></div>
+    <div class="col-md-3"><div class="card kpi p-3"><small>Transactions (Today)</small><h3 class="fw-bold">@ViewBag.TotalTransactions</h3></div></div>
+    <div class="col-md-3"><div class="card kpi p-3"><small>Top Drug (Today)</small><h5 class="fw-bold">@ViewBag.TopProduct</h5></div></div>
 </div>
 
 <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
-<table class="table table-hover mb-0 align-middle">
-    <thead class="table-light"><tr><th>Receipt No</th><th>Date</th><th>Items</th><th>Total</th></tr></thead>
-    <tbody>
-    @foreach(var s in Model){
-        <tr>
-            <td class="fw-bold text-success">@s.ReceiptNo</td>
-            <td>@s.Date.ToString("dd MMM yyyy hh:mm tt")</td>
-            <td>
-                @if(s.Items!= null){
-                    foreach(var item in s.Items){
-                        <span class="badge bg-light text-dark border rounded-pill me-1">@item.Product?.Name x @item.Qty = ₦@((item.Qty*item.Price).ToString("N2"))</span>
-                    }
-                }
-            </td>
-            <td class="fw-bold">₦@s.TotalAmount.ToString("N2")</td>
-        </tr>
-    }
-    @if(!Model.Any()){<tr><td colspan="4" class="text-center p-5 text-muted">No sales in this period</td></tr>}
-    </tbody>
-</table>
+    <table class="table table-hover mb-0 align-middle">
+        <thead class="table-light"><tr><th>Receipt No</th><th>Date</th><th>Qty</th><th>Customer</th><th>Payment Type</th><th>Total</th><th>Paid</th><th>Balance (owe)</th><th>Action</th></tr></thead>
+        <tbody>
+            @foreach (var s in Model)
+            {
+                <tr>
+                    <td class="fw-bold text-success">@s.ReceiptNo</td>
+                    <td>@s.Date.ToString("dd MMM yyyy hh:mm tt")</td>
+                    <td class="text-muted">@(s.Items?.Sum(i => i.Qty) ?? 0) pcs</td>
+                    <td>@s.CustomerName</td>
+                    <td>@s.PaymentType</td>
+                    <td class="fw-bold">₦@s.TotalAmount.ToString("N2")</td>
+                    <td>₦@s.AmountPaid</td>
+                    <td style="color:red;">₦@s.Balance</td>
+                    <td><a href="@Url.Action("Receipt", "Sales", new { id = s.Id })" target="_blank" class="btn btn-sm btn-outline-success rounded-pill">🖨️ Receipt</a></td>
+                </tr>
+            }
+            @if (!Model.Any())
+            {
+                <tr><td colspan="9" class="text-center p-5 text-muted">No sales today yet</td></tr>
+            }
+        </tbody>
+    </table>
 </div>

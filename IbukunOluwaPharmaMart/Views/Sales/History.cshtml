@@ -1,0 +1,219 @@
+﻿@model List<IbukunOluwaPharmaMart.Models.Sale>
+@{
+    ViewData["Title"] = "Sales History";
+    var from = ViewBag.From as string;
+    var to = ViewBag.To as string;
+    var hasFilter = !string.IsNullOrEmpty(from) || !string.IsNullOrEmpty(to);
+}
+
+<style>
+    .history-header{
+        background: linear-gradient(135deg, #0f5132 0%, #198754 60%, #20c997 100%);
+        border-radius: 20px;
+        padding: 22px 24px;
+        color: #fff;
+        box-shadow: 0 12px 30px rgba(25,135,84,.25);
+    }
+    .history-header h3{ margin:0; font-weight:800; letter-spacing:-.3px; }
+    .history-header p{ margin:4px 0 0; opacity:.85; font-size:14px; }
+    .kpi-card{
+        border:0; border-radius:18px; padding:18px;
+        box-shadow:0 8px 25px rgba(0,0,0,.06); background:#fff;
+        position:relative; overflow:hidden;
+    }
+    .kpi-card::after{ content:""; position:absolute; top:0; left:0; right:0; height:4px; background:#e9ecef; }
+    .kpi-card.success::after{ background:#198754; }
+    .kpi-card.blue::after{ background:#0d6efd; }
+    .kpi-card.amber::after{ background:#ffc107; }
+    .kpi-card.purple::after{ background:#6f42c1; }
+    .kpi-icon{
+        width:42px; height:42px; border-radius:12px;
+        display:flex; align-items:center; justify-content:center;
+        font-size:20px; margin-bottom:10px;
+    }
+    .kpi-card small{ color:#6c757d; font-weight:700; text-transform:uppercase; letter-spacing:.6px; font-size:11px; }
+    .kpi-card h3{ font-weight:800; margin:2px 0 0; font-size:26px; letter-spacing:-.5px; }
+    .kpi-card h5{ font-weight:800; margin:4px 0 0; }
+    .filter-card{
+        border:0; border-radius:18px; background:#fff;
+        box-shadow:0 8px 25px rgba(0,0,0,.06); padding:18px;
+    }
+    .filter-card label{ font-size:12px; font-weight:700; color:#495057; text-transform:uppercase; letter-spacing:.5px; }
+    .filter-card .form-control{ border-radius:12px; padding:10px 12px; border:1.5px solid #e9ecef; }
+    .filter-card .form-control:focus{ border-color:#198754; box-shadow:0 0 0 4px rgba(25,135,84,.12); }
+    .table-card{ border:0; border-radius:18px; overflow:hidden; background:#fff; box-shadow:0 8px 25px rgba(0,0,0,.06); }
+    .table-card thead th{
+        background:#f8f9fa; color:#495057; font-size:12px; font-weight:800;
+        text-transform:uppercase; letter-spacing:.5px; border:0; padding:14px 16px;
+    }
+    .table-card tbody td{ padding:13px 16px; vertical-align:middle; border-top:1px solid #f1f3f5; }
+    .table-card tbody tr:hover{ background:#f8fff9; }
+    .badge-pay{ font-size:11px; font-weight:700; padding:6px 10px; border-radius:20px; }
+    .badge-cash{ background:#e6f4ea; color:#137333; }
+    .badge-transfer{ background:#e8f0fe; color:#174ea6; }
+    .badge-pos{ background:#fef7e0; color:#b06000; }
+    .badge-owe{ background:#fce8e6; color:#a50e0e; }
+    .badge-paid{ background:#e6f4ea; color:#137333; }
+    .summary-card{ border:0; border-radius:18px; overflow:hidden; box-shadow:0 8px 25px rgba(0,0,0,.06); }
+    .summary-card .card-header{ background:linear-gradient(135deg,#0f5132,#198754); border:0; padding:16px 20px; }
+    .summary-card thead th{ font-size:12px; text-transform:uppercase; letter-spacing:.5px; }
+    .btn-pill{ border-radius:50px; padding:9px 18px; font-weight:700; }
+    @@media print{ .no-print{ display:none !important; } .history-header{ box-shadow:none !important; } }
+</style>
+
+<!-- HEADER -->
+<div class="history-header d-flex flex-wrap justify-content-between align-items-center gap-3 mb-4">
+    <div>
+        <h3>📜 Sales History</h3>
+        <p>
+            @if(hasFilter){
+                <span>Showing sales from <b>@(string.IsNullOrEmpty(from) ? "Beginning" : DateTime.Parse(from).ToString("dd MMM yyyy"))</b> to <b>@(string.IsNullOrEmpty(to) ? "Today" : DateTime.Parse(to).ToString("dd MMM yyyy"))</b></span>
+            } else {
+                <span>All sales records — use the filter below to view a specific period</span>
+            }
+        </p>
+    </div>
+    <div class="d-flex gap-2 no-print">
+        <a href="/Sales/Report" class="btn btn-light btn-pill">📊 Today's Sales</a>
+        <button onclick="window.print()" class="btn btn-dark btn-pill">🖨️ Print</button>
+    </div>
+</div>
+
+<!-- KPI CARDS -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card kpi-card success">
+            <div class="kpi-icon" style="background:#e6f4ea;">💰</div>
+            <small>Total Revenue</small>
+            <h3>₦@ViewBag.TotalSales.ToString("N2")</h3>
+            <div class="text-muted" style="font-size:12px;">In selected period</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card kpi-card blue">
+            <div class="kpi-icon" style="background:#e8f0fe;">💊</div>
+            <small>Items Sold</small>
+            <h3>@ViewBag.TotalItems <span style="font-size:14px; font-weight:600; color:#6c757d;">pcs</span></h3>
+            <div class="text-muted" style="font-size:12px;">Total quantity sold</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card kpi-card amber">
+            <div class="kpi-icon" style="background:#fef7e0;">🧾</div>
+            <small>Transactions</small>
+            <h3>@ViewBag.TotalTransactions</h3>
+            <div class="text-muted" style="font-size:12px;">Receipts issued</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card kpi-card purple">
+            <div class="kpi-icon" style="background:#f3e8ff;">🏆</div>
+            <small>Top Drug</small>
+            <h5>@ViewBag.TopProduct</h5>
+            <div class="text-muted" style="font-size:12px;">Best seller in period</div>
+        </div>
+    </div>
+</div>
+
+<!-- FILTER -->
+<div class="filter-card mb-4 no-print">
+    <form method="get" class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label>From Date</label>
+            <input type="date" name="from" value="@ViewBag.From" class="form-control" />
+        </div>
+        <div class="col-md-4">
+            <label>To Date</label>
+            <input type="date" name="to" value="@ViewBag.To" class="form-control" />
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-success btn-pill w-100">🔍 Filter</button>
+        </div>
+        <div class="col-md-2">
+            <a href="/Sales/History" class="btn btn-outline-secondary btn-pill w-100">Reset</a>
+        </div>
+    </form>
+    <div class="d-flex flex-wrap gap-2 mt-3">
+        <small class="text-muted fw-bold me-1" style="padding-top:6px;">Quick:</small>
+        <a href="/Sales/History?from=@DateTime.Today.ToString("yyyy-MM-dd")&to=@DateTime.Today.ToString("yyyy-MM-dd")" class="btn btn-sm btn-outline-success rounded-pill">Today</a>
+        <a href="/Sales/History?from=@DateTime.Today.AddDays(-6).ToString("yyyy-MM-dd")&to=@DateTime.Today.ToString("yyyy-MM-dd")" class="btn btn-sm btn-outline-success rounded-pill">Last 7 Days</a>
+        <a href="/Sales/History?from=@DateTime.Today.AddDays(-29).ToString("yyyy-MM-dd")&to=@DateTime.Today.ToString("yyyy-MM-dd")" class="btn btn-sm btn-outline-success rounded-pill">Last 30 Days</a>
+        <a href="/Sales/History?from=@(new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).ToString("yyyy-MM-dd"))&to=@DateTime.Today.ToString("yyyy-MM-dd")" class="btn btn-sm btn-outline-success rounded-pill">This Month</a>
+    </div>
+</div>
+
+<!-- TABLE -->
+<div class="card table-card">
+    <div class="d-flex justify-content-between align-items-center px-3 pt-3 pb-2">
+        <h6 class="fw-bold mb-0">🧾 Sales Records <span class="badge bg-success rounded-pill ms-1">@Model.Count</span></h6>
+        <small class="text-muted">@(hasFilter ? "Filtered results" : "All records")</small>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead><tr><th>Receipt No</th><th>Date</th><th>Qty</th><th>Customer</th><th>Payment</th><th>Total</th><th>Paid</th><th>Balance</th><th class="no-print">Action</th></tr></thead>
+            <tbody>
+                @foreach (var s in Model)
+                {
+                    var pay = (s.PaymentType ?? "").ToLower();
+                    var payClass = pay.Contains("cash") ? "badge-cash" : pay.Contains("transfer") ? "badge-transfer" : "badge-pos";
+                    <tr>
+                        <td><span class="fw-bold text-success">#@s.ReceiptNo</span></td>
+                        <td><div class="fw-semibold">@s.Date.ToString("dd MMM yyyy")</div><small class="text-muted">@s.Date.ToString("hh:mm tt")</small></td>
+                        <td><span class="badge bg-light text-dark rounded-pill">@(s.Items?.Sum(i => i.Qty) ?? 0) pcs</span></td>
+                        <td><span class="fw-semibold">@(string.IsNullOrEmpty(s.CustomerName) ? "Walk-in Customer" : s.CustomerName)</span></td>
+                        <td><span class="badge-pay @payClass">@s.PaymentType</span></td>
+                        <td class="fw-bold">₦@s.TotalAmount.ToString("N2")</td>
+                        <td>₦@s.AmountPaid.ToString("N2")</td>
+                        <td>
+                            @if (s.Balance > 0)
+                            { <span class="badge-pay badge-owe">₦@s.Balance.ToString("N2") owe</span> }
+                            else
+                            { <span class="badge-pay badge-paid">✓ Paid</span> }
+                        </td>
+                        <td class="no-print"><a href="@Url.Action("Receipt", "Sales", new { id = s.Id })" target="_blank" class="btn btn-sm btn-outline-success rounded-pill px-3">🖨️ Receipt</a></td>
+                    </tr>
+                }
+                @if (!Model.Any())
+                {
+                    <tr><td colspan="9" class="text-center p-5">
+                        <div style="font-size:48px;">📭</div>
+                        <h6 class="fw-bold mt-2">No sales in this period</h6>
+                        <p class="text-muted mb-0">Try a different date range or check today's sales.</p>
+                    </td></tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- DAILY SUMMARY -->
+<div class="card summary-card mt-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 text-white fw-bold">📅 Daily Sales Summary</h5>
+        <span class="badge bg-light text-success rounded-pill px-3 py-2">GRAND TOTAL: ₦@Model.Sum(s => s.TotalAmount).ToString("N2")</span>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="table-light"><tr><th>Date</th><th>Receipts</th><th class="text-end">Total for Day</th></tr></thead>
+                <tbody>
+                    @foreach (var day in ViewBag.DailyTotals)
+                    {
+                        <tr>
+                            <td><strong>@day.Date.ToString("dd MMM yyyy")</strong> <small class="text-muted">• @day.Date.ToString("dddd")</small></td>
+                            <td><span class="badge bg-light text-dark rounded-pill">@day.Count receipts</span></td>
+                            <td class="text-end"><strong>₦@day.Total.ToString("N2")</strong></td>
+                        </tr>
+                    }
+                    @if (ViewBag.DailyTotals == null || ((System.Collections.IList)ViewBag.DailyTotals).Count == 0)
+                    {
+                        <tr><td colspan="3" class="text-center text-muted p-4">No daily summary for this period</td></tr>
+                    }
+                </tbody>
+                <tfoot class="table-success">
+                    <tr><th colspan="2">GRAND TOTAL (Selected Period)</th><th class="text-end">₦@Model.Sum(s => s.TotalAmount).ToString("N2")</th></tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>

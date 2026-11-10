@@ -1,0 +1,5 @@
+﻿INSERT INTO [dbo].[__EFMigrationsHistory] ([MigrationId], [ProductVersion]) VALUES (N'20260925100714_Initial', N'10.0.12')
+INSERT INTO [dbo].[__EFMigrationsHistory] ([MigrationId], [ProductVersion]) VALUES (N'20260930091939_InitialCreate', N'10.0.12')
+INSERT INTO [dbo].[__EFMigrationsHistory] ([MigrationId], [ProductVersion]) VALUES (N'', N'10.0.12')
+INSERT INTO [dbo].[__EFMigrationsHistory] ([MigrationId], [ProductVersion]) VALUES (N'20261022094417_AddSuspendedSalesTable', N'10.0.12')
+INSERT INTO [dbo].[__EFMigrationsHistory] ([MigrationId], [ProductVersion]) VALUES (N'20261022095429_FixSuspendedSales', N'10.0.12')

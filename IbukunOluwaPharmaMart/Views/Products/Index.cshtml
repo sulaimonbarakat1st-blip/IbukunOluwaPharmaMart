@@ -6,6 +6,8 @@
 .pharma-header{background:linear-gradient(135deg,#0f8a4a,#06532b); color:white; border-radius:20px; padding:24px}
 .card-product{border:0; border-radius:18px; box-shadow:0 8px 30px rgba(0,0,0,.06)}
 .badge-low{background:#fee2e2;color:#991b1b}.badge-ok{background:#dcfce7;color:#166534}
+.card-expiring{border:2px solid #dc2626 !important; background:#fff5f5 !important}
+.card-expired{border:2px solid #000 !important; background:#fee2e2 !important}
 </style>
 
 <div class="pharma-header d-flex justify-content-between align-items-center mb-4">
@@ -19,17 +21,41 @@
 </form>
 
 <div class="row g-3">
+@{
+    var today = DateTime.Today;
+    var alertDate = today.AddMonths(3);
+}
 @foreach(var p in Model){
+    bool isExpired = p.ExpiryDate.HasValue && p.ExpiryDate.Value.Date < today;
+    bool isExpiringSoon = p.ExpiryDate.HasValue && p.ExpiryDate.Value.Date >= today && p.ExpiryDate.Value.Date <= alertDate;
+    string extraCardClass = isExpired ? "card-expired" : (isExpiringSoon ? "card-expiring" : "");
 <div class="col-md-4 col-xl-3">
-  <div class="card card-product p-3 h-100">
+  <div class="card card-product p-3 h-100 @extraCardClass">
     <div class="d-flex justify-content-between">
-        @if(p.Quantity <= p.LowStockLevel){<span class="badge badge-low rounded-pill">Low Stock</span>}else{<span class="badge badge-ok rounded-pill">In Stock</span>}
+        @if(isExpired){
+            <span class="badge bg-danger rounded-pill">⚠️ EXPIRED</span>
+        } else if(isExpiringSoon){
+            <span class="badge bg-danger rounded-pill">⚠️ EXPIRES SOON</span>
+        } else if(p.Quantity <= p.LowStockLevel){
+            <span class="badge badge-low rounded-pill">Low Stock</span>
+        } else {
+            <span class="badge badge-ok rounded-pill">In Stock</span>
+        }
         <small class="text-muted fw-bold">@p.Category?.Name</small>
     </div>
     <h5 class="fw-bold mt-3 mb-1">@p.Name</h5>
     <small class="text-muted">@p.Dosage • Batch: @p.BatchNo</small>
     <div class="mt-2 small"><b>NAFDAC:</b> @p.NAFDACNo</div>
-    <div class="small text-danger"><b>Expiry:</b> @(p.ExpiryDate?.ToString("MMM yyyy")?? "N/A")</div>
+    <div class="small @(isExpired || isExpiringSoon ? "text-white" : "text-danger")" style="@(isExpired || isExpiringSoon ? "background:#dc2626;color:white!important;padding:4px 8px;border-radius:10px;font-weight:bold;" : "")">
+        <b>Expiry:</b> 
+        @if(isExpired){
+            <span>EXPIRED - @(p.ExpiryDate?.ToString("MMM dd, yyyy"))</span>
+        } else if(isExpiringSoon){
+            <span>⚠️ @p.ExpiryDate?.ToString("MMM dd, yyyy") - @((p.ExpiryDate.Value - today).Days) days left</span>
+        } else {
+            <span>@(p.ExpiryDate?.ToString("MMM yyyy")?? "N/A")</span>
+        }
+    </div>
     <hr/>
     <div class="d-flex justify-content-between">
         <div><small class="text-muted">Cost</small><div class="fw-bold">₦@p.CostPrice.ToString("N2")</div></div>

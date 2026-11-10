@@ -1,127 +1,459 @@
 ﻿@model List<IbukunOluwaPharmaMart.Models.Product>
 @{
     ViewData["Title"] = "Sell Drugs";
+    var role = Context.Session.GetString("Role");
+    var isCashier = role == "Cashier";
 }
-
 <div class="container mt-3">
-    <div style="background:#0f6d2f;color:white;padding:15px;border-radius:10px;">
-        <h4>💊 Sell Drugs - IbukunOluwa</h4>
+    <div style="background:#0f6d2f;color:white;padding:15px;border-radius:10px;" class="d-flex justify-content-between align-items-center">
+        <h4 class="mb-0">💊 Sell Drugs - IbukunOluwa</h4>
+        @if(isCashier){
+            <span class="badge bg-warning text-dark rounded-pill px-3"><i class="bi bi-eye-slash"></i> CASHIER MODE - Cost Price Hidden</span>
+        } else {
+            <span class="badge bg-light text-success rounded-pill px-3"><i class="bi bi-shield-check"></i> @role View - Profit Visible</span>
+        }
     </div>
 
     <div class="mt-3 position-relative">
         <label>Search / Select Drug</label>
-        <select id="drugDropdown" class="form-control form-control-lg" onchange="onDropdownSelect(this)">
+        <select id="drugSelect" class="form-control form-control-lg" onchange="onDropdownSelect(this)">
             <option value="">-- Select or type drug name --</option>
-            @foreach(var p in Model.OrderBy(x=>x.Name)){
-                <option value="@p.Id" data-name="@p.Name" data-price="@p.SellingPrice" data-qty="@p.Quantity">@p.Name - @p.Dosage - Qty: @p.Quantity - ₦@p.SellingPrice</option>
+            @foreach (var p in Model.OrderBy(x => x.Name))
+            {
+                var retail = p.RetailPrice != 0 ? p.RetailPrice : p.SellingPrice;
+                var whole = p.WholesalePrice != 0 ? p.WholesalePrice : p.SellingPrice;
+                var isExpired = p.ExpiryDate.HasValue && p.ExpiryDate.Value.Date < DateTime.Today;
+                var isExpiringSoon = p.ExpiryDate.HasValue && p.ExpiryDate.Value.Date >= DateTime.Today && p.ExpiryDate.Value.Date <= DateTime.Today.AddMonths(3);
+                if (isExpired) { continue; }
+                <option value="@p.Id">@p.Name - @p.Dosage - Qty: @p.Quantity - R:₦@retail / W:₦@whole @(isExpiringSoon ? "⚠️ EXPIRES SOON " + p.ExpiryDate?.ToString("MMM yyyy") : "")</option>
             }
         </select>
-        
         <input type="text" id="drugSearch" class="form-control mt-2" placeholder="Or type drug name e.g Dyn...">
-        <div id="suggestions" class="list-group position-absolute w-100 shadow" style="z-index:1000;display:none;max-height:250px;overflow-y:auto;"></div>
-    </div>
+        <div id="suggestions" class="list-group position-absolute w-100 shadow" style="z-index:1000;display:none;max-height:250px;overflow:auto;"></div>
 
-    <div class="mt-4">
-        <table class="table table-bordered" id="cartTable">
-            <thead style="background:#eee"><tr><th>Drug</th><th>Qty</th><th>Price</th><th>Total</th><th></th></tr></thead>
-            <tbody></tbody>
-        </table>
-        <h3 class="text-end">Total: ₦<span id="grandTotal">0.00</span></h3>
-    </div>
+        <!-- ===== DRUG BOXES - ADDED HERE ===== -->
+        <style>
+        .drug-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap:12px; margin-top:15px; }
+        .drug-box{ background:#fff; border:2px solid #e9ecef; border-radius:16px; padding:12px 8px; text-align:center; cursor:pointer; transition:.15s; box-shadow:0 4px 12px rgba(0,0,0,.05); }
+        .drug-box:hover{ border-color:#198754; transform:translateY(-3px); box-shadow:0 10px 22px rgba(25,135,84,.20); }
+        .drug-box:active{ transform:scale(.97); }
+        .drug-img{ width:68px; height:68px; border-radius:16px; margin:0 auto 8px; display:flex; align-items:center; justify-content:center; font-size:26px; font-weight:900; color:#fff; }
+        .drug-box h6{ font-size:13px; font-weight:800; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .drug-box small{ color:#6c757d; font-size:11px; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .drug-price{ color:#198754; font-weight:800; font-size:13px; margin-top:4px; }
+        .drug-stock{ font-size:11px; font-weight:700; } .drug-stock.low{ color:#dc3545; } .drug-stock.ok{ color:#198754; }
+        </style>
 
-    <div class="row mt-3">
-        <div class="col-6"><button class="btn btn-warning w-100 btn-lg" onclick="openSuspendModal()">SUSPEND ITEMS</button></div>
-        <div class="col-6"><button class="btn btn-success w-100 btn-lg" onclick="openSellModal()">SELL OUT</button></div>
-    </div>
+        <div class="card border-0 shadow-sm rounded-4 p-3 mt-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0">💊 Tap a Drug to Sell</h6>
+                <small class="text-muted"><span id="drugCount">@Model.Count(p => p.Quantity > 0 && !(p.ExpiryDate.HasValue && p.ExpiryDate.Value.Date < DateTime.Today))</span> drugs</small>
+            </div>
+            <input type="text" id="boxSearch" onkeyup="filterDrugBoxes()" placeholder="🔍 Type letters e.g. Dyn... to filter boxes" class="form-control rounded-3 mt-2" />
+            <div class="drug-grid" id="drugGrid">
+                @foreach (var d in Model.Where(p => p.Quantity > 0 && !(p.ExpiryDate.HasValue && p.ExpiryDate.Value.Date < DateTime.Today)).OrderBy(p => p.Name))
+                {
+                    var colors = new[] { "#198754", "#0d6efd", "#6f42c1", "#d63384", "#fd7e14", "#20c997", "#dc3545" };
+                    var color = colors[(d.Name?.Length ?? 1) % colors.Length];
+                    var retailPrice = d.RetailPrice != 0 ? d.RetailPrice : d.SellingPrice;
+                    <div class="drug-box" data-name="@d.Name.ToLower()" onclick="addToCart(@d.Id)">
+                        <div class="drug-img" style="background:@color">
+    @if (!string.IsNullOrEmpty(d.ImageUrl))
+    { <img src="@d.ImageUrl" style="width:100%; height:100%; object-fit:cover; border-radius:16px;" /> }
+    else { <span>@d.Name.Substring(0,1).ToUpper()</span> }
 </div>
-
-<!-- SELL OUT MODAL -->
-<div id="sellModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:2000;justify-content:center;align-items:center;">
-    <div style="background:white;padding:30px;border-radius:10px;text-align:center;width:90%;max-width:400px;">
-        <h5>Are you sure you want to sell out?</h5>
-        <div class="mt-4 d-flex justify-content-around">
-            <button class="btn btn-secondary px-4" onclick="closeModals()">No</button>
-            <button class="btn btn-success px-4" onclick="confirmSell()">Yes</button>
+                        <h6 title="@d.Name">@d.Name</h6>
+                        <small>@(d.Category?.Name ?? "") • @d.Dosage</small>
+                        <div class="drug-price">₦@retailPrice.ToString("N0")</div>
+                        <div class="drug-stock @(d.Quantity <= d.LowStockLevel ? "low" : "ok")">@(d.Quantity <= d.LowStockLevel ? $"⚠️ Only {d.Quantity} left" : $"{d.Quantity} in stock")</div>
+                    </div>
+                }
+            </div>
+            <div id="noDrugFound" style="display:none;" class="text-center text-muted p-4">No drug matches your typing 😔</div>
         </div>
-    </div>
-</div>
+        <!-- ===== END DRUG BOXES ===== -->
 
-<!-- SUSPEND MODAL -->
-<div id="suspendModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.6);z-index:2000;justify-content:center;align-items:center;">
-    <div style="background:white;padding:30px;border-radius:10px;text-align:center;width:90%;max-width:400px;">
-        <h5>Are you sure you want to suspend items?</h5>
+        <div class="mt-4">
+            <table class="table table-bordered" id="cartTable"><thead style="background:#eee"><tr><th>Drug</th><th>Qty</th><th>Price Type</th><th>Price</th><th>Total</th><th></th></tr></thead><tbody></tbody></table>
+            <h3 class="text-end">Total: ₦<span id="grandTotal">0.00</span></h3>
+            @if(isCashier){
+                <div class="alert alert-warning rounded-3 small"><i class="bi bi-lock-fill"></i> Cashier Mode: You can only see Selling Price. Cost Price & Profit are hidden for security.</div>
+            }
+        </div>
+        <div id="suspendedListModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:9999; justify-content:center; align-items:center; padding:15px;">
+            <div style="background:#fff; width:100%; max-width:520px; max-height:90vh; border-radius:20px; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 20px 50px rgba(0,0,0,0.3);">
+
+                <!-- HEADER -->
+                <div style="background:linear-gradient(135deg,#0f6d2f,#14b8a6); padding:18px 20px; color:white; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-size:19px; font-weight:800;">⏸️ Suspended Sales</div>
+                        <div id="suspendedCountLabel" style="font-size:12px; opacity:0.9; margin-top:2px;">0 sale waiting</div>
+                    </div>
+                    <button onclick="document.getElementById('suspendedListModal').style.display='none'" style="background:rgba(255,255,255,0.2); border:none; color:white; width:32px; height:32px; border-radius:50%; font-size:18px; cursor:pointer;">✕</button>
+                </div>
+
+                <!-- SEARCH -->
+                <div style="padding:12px 16px 0;">
+                    <input id="suspendedSearch" oninput="filterSuspended()" placeholder="🔍 Search by No or drug name..." style="width:100%; padding:11px 14px; border:1.5px solid #e2e8f0; border-radius:12px; font-size:14px; outline:none;" />
+                </div>
+
+                <!-- LIST - JS fills this -->
+                <div id="suspendedCards" style="padding:16px; overflow-y:auto; display:flex; flex-direction:column; gap:12px;"></div>
+
+                <!-- FOOTER -->
+                <div style="padding:12px 16px 16px; border-top:1px solid #f1f5f9;">
+                    <button onclick="document.getElementById('suspendedListModal').style.display='none'" class="btn btn-secondary w-100" style="border-radius:12px; padding:11px; font-weight:700;">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <style>
+                    .susp-card {
+                        border: 1.5px solid #eef2f7;
+                        border-radius: 16px;
+                        padding: 14px;
+                        background: #fcfdff;
+                    }
+
+                        .susp-card:hover {
+                            border-color: #14b8a6;
+                            box-shadow: 0 6px 18px rgba(20,184,166,0.12);
+                        }
+
+                    .susp-badge {
+                        background: #fef3c7;
+                        color: #92400e;
+                        font-size: 11px;
+                        font-weight: 800;
+                        padding: 4px 8px;
+                        border-radius: 20px;
+                    }
+
+                    .susp-resume {
+                        background: #0f6d2f;
+                        color: white;
+                        border: none;
+                        padding: 9px 16px;
+                        border-radius: 10px;
+                        font-weight: 800;
+                        cursor: pointer;
+                    }
+
+                    .susp-item {
+                        font-size: 13px;
+                        color: #334155;
+                        display: flex;
+                        justify-content: space-between;
+                        padding: 3px 0;
+                        border-bottom: 1px dashed #f1f5f9;
+                    }
+        </style>
+        </div>
+        <button onclick="showSuspendedListModal()" class="btn btn-info">View Suspended (<span id="suspendCount">0</span>)</button>
+        <div class="row mt-3"><div class="col-6"><button class="btn btn-warning w-100 btn-lg" onclick="openSuspendModal()">SUSPEND ITEMS</button></div><div class="col-6"><button class="btn btn-success w-100 btn-lg" onclick="openSellModal()">SELL OUT</button></div></div>
+    </div>
+
+<!-- SELL MODAL -->
+<div id="sellModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; justify-content:center; align-items:center;">
+    <div style="background:white;padding:25px;border-radius:12px;width:95%;max-width:500px;">
+        <h5 style="color:#14532d;">💰 Complete Sale</h5>
+        <div class="mt-3 text-start">
+            <label>Payment Type</label>
+            <select id="paymentType" class="form-control" onchange="onPaymentTypeChange()">
+                <option value="Cash">Cash</option>
+                <option value="Transfer">Transfer</option>
+                <option value="Credit">Credit (Owe)</option>
+                <option value="Partial">Partial Payment</option>
+            </select>
+            <div id="creditFields" style="display:none;" class="mt-3 p-3 border rounded bg-light">
+                <label>Customer Name *</label>
+                <input type="text" id="customerName" class="form-control" placeholder="Who is owing? e.g. Mrs Ade">
+                <label class="mt-2">Customer Phone (WhatsApp)</label>
+                <input type="text" id="customerPhone" class="form-control" placeholder="080...">
+            </div>
+            <label class="mt-3">Amount Paid (₦)</label>
+            <input type="number" id="amountPaid" class="form-control form-control-lg" oninput="calcBalance()">
+            <div class="mt-2 d-flex justify-content-between">
+                <span>Total: ₦<b id="modalTotal">0</b></span>
+                <span>Balance Owed: ₦<b id="modalBalance" style="color:red;">0</b></span>
+            </div>
+        </div>
         <div class="mt-4 d-flex justify-content-around">
-            <button class="btn btn-secondary px-4" onclick="closeModals()">No</button>
-            <button class="btn btn-warning px-4" onclick="confirmSuspend()">Yes</button>
+            <button class="btn btn-secondary px-4" onclick="closeModals()">Cancel</button>
+            <button class="btn btn-success px-4" onclick="confirmSell()">Confirm Sale</button>
         </div>
     </div>
 </div>
 
 <script>
-let cart = [];
-const allProducts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(p => new { id=p.Id, name=p.Name, price=p.SellingPrice, qty=p.Quantity, dosage=p.Dosage })));
+    let cart = [];
+    const allProducts = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.Select(p => new
+        {
+                id = p.Id,
+                name = p.Name,
+                retailPrice = p.RetailPrice != 0 ? p.RetailPrice : p.SellingPrice,
+                wholesalePrice = p.WholesalePrice != 0 ? p.WholesalePrice : p.SellingPrice,
+                price = p.RetailPrice != 0 ? p.RetailPrice : p.SellingPrice,
+                qty = p.Quantity,
+                dosage = p.Dosage,
+                expiryDate = p.ExpiryDate,
+                costPrice = isCashier ? 0 : p.CostPrice
+        })));
+        function filterDrugBoxes(){
+    // Use whichever box you typed in - top OR bottom
+    var boxSearch = document.getElementById('boxSearch').value.toLowerCase().trim();
+    var topSearch = document.getElementById('drugSearch').value.toLowerCase().trim();
+    var input = boxSearch || topSearch; // if bottom is empty, use top
 
-// DROPDOWN SELECT
-function onDropdownSelect(sel){
-    if(!sel.value) return;
-    let opt = sel.options[sel.selectedIndex];
-    addToCart(parseInt(opt.value), opt.dataset.name, parseFloat(opt.dataset.price), parseInt(opt.dataset.qty));
-    sel.selectedIndex = 0;
-}
-
-// TYPING SEARCH - shows dropdown list
-document.getElementById('drugSearch').addEventListener('input', function(){
-    let term = this.value.toLowerCase().trim();
-    let box = document.getElementById('suggestions');
-    if(term.length < 1){ box.style.display='none'; return; }
-    
-    let filtered = allProducts.filter(p => p.name.toLowerCase().startsWith(term) || p.name.toLowerCase().includes(term));
-    box.innerHTML='';
-    if(filtered.length==0){ box.style.display='none'; return; }
-    
-    filtered.slice(0,10).forEach(d=>{
-        let a = document.createElement('a');
-        a.className='list-group-item list-group-item-action';
-        a.innerHTML=`<strong>${d.name}</strong> - ${d.dosage||''} - ₦${d.price} (Qty:${d.qty})`;
-        a.onclick=()=>{ addToCart(d.id,d.name,d.price,d.qty); box.style.display='none'; document.getElementById('drugSearch').value=''; };
-        box.appendChild(a);
+    var boxes = document.querySelectorAll('.drug-box');
+    var shown = 0;
+    boxes.forEach(function(box){
+        var name = box.getAttribute('data-name');
+        // 👈 CHANGED: startsWith = alphabetical. "am" shows only drugs STARTING with "am"
+        // If you want "am" to also find "Vitamins", change startsWith back to includes
+        var show = input === '' || name.startsWith(input);
+        box.style.display = show ? 'block' : 'none';
+        if(show) shown++;
     });
-    box.style.display='block';
-});
-
-function addToCart(id,name,price,stock){
-    let ex = cart.find(c=>c.productId==id);
-    if(ex){ if(ex.quantity < stock) ex.quantity++; else alert('Low stock! Only '+stock+' left'); }
-    else cart.push({ productId:id, name:name, price:price, quantity:1, stock:stock });
-    renderCart();
+    document.getElementById('drugCount').innerText = shown;
+    document.getElementById('noDrugFound').style.display = shown === 0 ? 'block' : 'none';
 }
-function renderCart(){
-    let tbody=document.querySelector('#cartTable tbody'); tbody.innerHTML=''; let grand=0;
-    cart.forEach((c,i)=>{
-        let total=c.price*c.quantity; grand+=total;
-        tbody.innerHTML+=`<tr><td>${c.name}</td><td><input type='number' min='1' max='${c.stock}' value='${c.quantity}' onchange='cart[${i}].quantity=parseInt(this.value);renderCart()' style='width:60px'></td><td>₦${c.price}</td><td>₦${total}</td><td><button class='btn btn-sm btn-danger' onclick='cart.splice(${i},1);renderCart()'>x</button></td></tr>`;
+
+    function onDropdownSelect(sel){ if(!sel.value) return; addToCart(parseInt(sel.value)); sel.selectedIndex=0; }
+
+    document.getElementById('drugSearch').addEventListener('input', function(){
+        let term=this.value.toLowerCase().trim();
+        filterDrugBoxes();
+        let box=document.getElementById('suggestions');
+        if(term.length<1){box.style.display='none';return;}
+        let today = new Date(); today.setHours(0,0,0,0);
+        let filtered=allProducts.filter(p=>{
+            if(!p.name.toLowerCase().includes(term)) return false;
+            if(p.expiryDate){
+                let exp = new Date(p.expiryDate);
+                if(exp < today) return false;
+            }
+            return true;
+        });
+        box.innerHTML='';
+        if(filtered.length==0){box.style.display='none';return;}
+        filtered.slice(0,10).forEach(d=>{
+            let a=document.createElement('a');
+            a.className='list-group-item list-group-item-action';
+            let expBadge = '';
+            if(d.expiryDate){
+                let exp = new Date(d.expiryDate);
+                let threeMonths = new Date(); threeMonths.setMonth(threeMonths.getMonth()+3);
+                if(exp <= threeMonths){
+                    expBadge = `<span class="badge bg-danger ms-2">⚠️ EXPIRES ${exp.toLocaleDateString()}</span>`;
+                }
+            }
+            a.innerHTML=`<strong>${d.name}</strong> - R:₦${d.retailPrice} / W:₦${d.wholesalePrice} (Qty:${d.qty}) ${expBadge}`;
+            a.onclick=()=>{addToCart(d.id); box.style.display='none'; document.getElementById('drugSearch').value=''; filterDrugBoxes();};
+            box.appendChild(a);
+        });
+        box.style.display='block';
     });
-    document.getElementById('grandTotal').innerText=grand.toFixed(2);
-}
 
-// MODALS
-function openSellModal(){ if(cart.length==0) return alert('Cart empty'); document.getElementById('sellModal').style.display='flex'; }
-function openSuspendModal(){ if(cart.length==0) return alert('Cart empty'); document.getElementById('suspendModal').style.display='flex'; }
-function closeModals(){ document.getElementById('sellModal').style.display='none'; document.getElementById('suspendModal').style.display='none'; }
+    function addToCart(id){
+        let prod = allProducts.find(p=>p.id==id);
+        if(!prod) return;
+        let exist = cart.find(c=>c.productId==id);
+        if(exist){
+            if(exist.quantity < prod.qty) exist.quantity++;
+            else alert('Out of stock! Only '+prod.qty+' left');
+        } else {
+            cart.push({
+                productId:prod.id,
+                name:prod.name,
+                retailPrice: prod.retailPrice,
+                wholesalePrice: prod.wholesalePrice,
+                price: prod.retailPrice,
+                priceType: 'retail',
+                quantity:1,
+                stock: prod.qty
+            });
+        }
+        renderCart();
+    }
 
-async function confirmSell(){
-    closeModals();
-    let payload = cart.map(c=>({ productId:c.productId, quantity:c.quantity }));
-    let res = await fetch('/POS/Checkout', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-    let data = await res.json();
-    if(data.success){ alert('Sold! Receipt: '+data.receiptNo); location.reload(); } else alert('Failed');
-}
-function confirmSuspend(){
-    localStorage.setItem('suspendedCart', JSON.stringify(cart));
-    closeModals();
-    alert('Items suspended! You can come back and resume later.');
-    cart=[]; renderCart();
-}
-// On load, check if suspended exists
-window.onload=()=>{ let saved=localStorage.getItem('suspendedCart'); if(saved){ if(confirm('You have suspended items. Resume?')){ cart=JSON.parse(saved); renderCart(); localStorage.removeItem('suspendedCart'); } } };
+    function togglePriceType(index){
+        let item = cart[index];
+        if(item.priceType === 'retail'){
+            item.priceType = 'wholesale';
+            item.price = item.wholesalePrice;
+        } else {
+            item.priceType = 'retail';
+            item.price = item.retailPrice;
+        }
+        renderCart();
+    }
+
+    function renderCart(){
+        let tbody=document.querySelector('#cartTable tbody');
+        tbody.innerHTML='';
+        let grand=0;
+        cart.forEach((c,i)=>{
+            let total=c.price*c.quantity;
+            grand+=total;
+            let badge = c.priceType === 'retail' ? '<span style="background:#e0f2fe;color:#0284c7;padding:3px 8px;border-radius:10px;font-size:11px;">RETAIL</span>' : '<span style="background:#fef3c7;color:#d97706;padding:3px 8px;border-radius:10px;font-size:11px;">WHOLESALE</span>';
+            tbody.innerHTML+=`<tr>
+                <td>${c.name}</td>
+                <td><input type='number' min='1' max='${c.stock||1000}' value='${c.quantity}' onchange='cart[${i}].quantity=parseInt(this.value);renderCart()' style='width:60px'></td>
+                <td>${badge} <button class='btn btn-sm btn-outline-primary ms-1' style='font-size:11px; border-radius:12px;' onclick='togglePriceType(${i})'>↔ Switch</button></td>
+                <td>₦${c.price}</td>
+                <td>₦${total}</td>
+                <td><button class='btn btn-sm btn-danger' onclick='cart.splice(${i},1);renderCart()'>x</button></td>
+            </tr>`;
+        });
+        document.getElementById('grandTotal').innerText=grand.toFixed(2);
+    }
+
+    function openSellModal(){
+        if(cart.length==0) return alert('Cart empty');
+        let grand = cart.reduce((s,c)=>s + c.price*c.quantity, 0);
+        document.getElementById('modalTotal').innerText = grand.toFixed(2);
+        document.getElementById('amountPaid').value = grand;
+        document.getElementById('modalBalance').innerText = '0.00';
+        document.getElementById('customerName').value = '';
+        document.getElementById('customerPhone').value = '';
+        document.getElementById('paymentType').value = 'Cash';
+        document.getElementById('creditFields').style.display='none';
+        document.getElementById('sellModal').style.display='flex';
+    }
+    function openSuspendModal(){ if(cart.length==0) return alert('Cart empty'); confirmSuspend(); }
+    function closeModals(){ document.getElementById('sellModal').style.display='none'; }
+    function onPaymentTypeChange(){
+        let type = document.getElementById('paymentType').value;
+        document.getElementById('creditFields').style.display = (type==='Credit' || type==='Partial') ? 'block' : 'none';
+        let total = parseFloat(document.getElementById('modalTotal').innerText) || 0;
+        if(type==='Credit'){ document.getElementById('amountPaid').value = 0; }
+        else if(type==='Cash' || type==='Transfer'){ document.getElementById('amountPaid').value = total; }
+        calcBalance();
+    }
+    function calcBalance(){
+        let total = parseFloat(document.getElementById('modalTotal').innerText) || 0;
+        let paid = parseFloat(document.getElementById('amountPaid').value) || 0;
+        let bal = total - paid;
+        document.getElementById('modalBalance').innerText = bal.toFixed(2);
+    }
+    async function confirmSell(){
+        let total = parseFloat(document.getElementById('modalTotal').innerText);
+        let paid = parseFloat(document.getElementById('amountPaid').value) || 0;
+        let type = document.getElementById('paymentType').value;
+        let custName = document.getElementById('customerName').value.trim();
+        let custPhone = document.getElementById('customerPhone').value.trim();
+        if((type==='Credit' || paid < total) && !custName){ alert('Customer owing! Enter Customer Name'); return; }
+        let payload={
+            Items: cart.map(c=>({ProductId:c.productId,Quantity:c.quantity, Price:c.price, PriceType:c.priceType})),
+            PaymentType: type,
+            AmountPaid: paid,
+            CustomerName: custName || "Walk-in Customer",
+            CustomerPhone: custPhone
+        };
+        try{
+            let res=await fetch('/POS/Checkout',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+            let data=await res.json();
+            if(data.success){ closeModals(); alert('Sold! Receipt: '+data.receiptNo); location.reload(); }
+            else alert('Failed: ' + (data.message || JSON.stringify(data)));
+        }catch(e){ alert('Failed: '+ e.message); }
+    }
+    async function confirmSuspend(){
+        if(cart.length==0){ alert('Cart empty'); return; }
+        let payload = cart.map(c=>({ ProductId:c.productId, Quantity:c.quantity, Price:c.price, PriceType:c.priceType }));
+        let res = await fetch('/POS/SuspendSale', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        let data = await res.json();
+        if(data.success){ alert('Items suspended!'); cart=[]; renderCart(); await updateSuspendedCount(); }else{ alert('Failed: ' + (data.message||'unknown')); }
+    }
+    async function updateSuspendedCount(){
+        try{ let res = await fetch('/POS/GetSuspendedSales'); let list = await res.json(); document.getElementById('suspendCount').textContent = list.length; }catch(e){}
+    }
+        let allSuspended = [];
+
+    async function showSuspendedListModal(){
+        let res = await fetch('/POS/GetSuspendedSales');
+        allSuspended = await res.json();
+        if(allSuspended.length==0){ alert('No suspended sales'); return; }
+        document.getElementById('suspendedSearch').value = '';
+        renderSuspendedCards(allSuspended);
+        document.getElementById('suspendedListModal').style.display='flex';
+    }
+
+    function renderSuspendedCards(list){
+        let box = document.getElementById('suspendedCards');
+        document.getElementById('suspendedCountLabel').innerText = list.length + (list.length == 1 ? ' sale waiting' : ' sales waiting');
+
+        if(!list.length){
+            box.innerHTML = `<div style="text-align:center; padding:30px 10px;"><div style="font-size:40px;">🛒</div><div style="font-weight:700; margin-top:8px;">No suspended sales</div><div style="font-size:13px; color:#64748b;">Suspend a sale and it will appear here.</div></div>`;
+            return;
+        }
+
+        box.innerHTML = list.map(s => {
+            let no = s.suspendedNo || s.SuspendedNo;
+            let id = s.id || s.Id;
+            let total = s.totalAmount ?? s.TotalAmount ?? 0;
+            let count = s.itemsCount ?? s.ItemsCount ?? (s.items ? s.items.length : 0);
+            let dateRaw = s.dateSuspended || s.DateSuspended || '';
+            let date = dateRaw ? new Date(dateRaw).toLocaleString('en-NG', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }) : '';
+            // Your controller already sends Items array
+            let items = s.items || s.Items || [];
+            let itemsHtml = items.map(i => {
+                let qty = i.quantity ?? i.Quantity ?? 1;
+                let pname = i.productName || i.ProductName || i.name || 'Drug';
+                let price = i.price ?? i.Price ?? 0;
+                return `<div class="susp-item"><span>${qty} x ${pname}</span><b>₦${(price * qty).toLocaleString()}</b></div>`;
+            }).join('');
+
+            return `
+            <div class="susp-card">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <b style="font-size:14px;">${no}</b>
+                    <span class="susp-badge">${count} ITEM${count>1?'S':''}</span>
+                </div>
+                <div style="font-size:12px; color:#64748b; margin:4px 0 10px;">📅 ${date}</div>
+                <div>${itemsHtml}</div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:12px; border-top:1px solid #f1f5f9; padding-top:10px;">
+                    <div><span style="font-size:12px; color:#64748b;">Total</span><div style="font-size:18px; font-weight:900; color:#0f6d2f;">₦${Number(total).toLocaleString()}</div></div>
+                    <button class="susp-resume" onclick="resumeSuspendedDB(${id})">▶ Resume Sale</button>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function filterSuspended(){
+        let q = document.getElementById('suspendedSearch').value.toLowerCase();
+        let filtered = allSuspended.filter(s => {
+            let no = (s.suspendedNo || s.SuspendedNo || '').toLowerCase();
+            let items = s.items || s.Items || [];
+            return no.includes(q) || items.some(i => (i.productName || i.ProductName || '').toLowerCase().includes(q));
+        });
+        renderSuspendedCards(filtered);
+    }
+    async function resumeSuspendedDB(id){
+        try{
+            let res = await fetch('/POS/ResumeSale?id='+id, { method:'POST' });
+            let data = await res.json();
+            if(data.cart){
+                let items = JSON.parse(data.cart);
+                cart = items.map(i=>{
+                    let pid = i.ProductId || i.productId || i.Id || i.id;
+                    let prod = allProducts.find(p=>p.id == pid);
+                    return {
+                        productId: pid,
+                        name: i.name || i.Name || (prod ? prod.name : 'Unknown Drug'),
+                        retailPrice: i.retailPrice || i.RetailPrice || (prod ? prod.retailPrice : 0),
+                        wholesalePrice: i.wholesalePrice || i.WholesalePrice || (prod ? prod.wholesalePrice : 0),
+                        price: i.price || i.Price || (prod ? prod.price : 0),
+                        priceType: i.priceType || i.PriceType || 'retail',
+                        quantity: i.Quantity || i.quantity || 1,
+                        stock: prod ? prod.qty : 1000
+                    };
+                });
+                renderCart();
+                document.getElementById('suspendedListModal').style.display='none';
+                await updateSuspendedCount();
+            } else { alert('Resume failed: no cart returned'); }
+        }catch(e){ alert('Resume failed: '+e.message); console.error(e); }
+    }
+    window.onload=async()=>{ renderCart(); await updateSuspendedCount(); }
 </script>

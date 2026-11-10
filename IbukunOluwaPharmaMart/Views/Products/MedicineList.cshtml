@@ -1,0 +1,110 @@
+﻿@model List<IbukunOluwaPharmaMart.Models.Product>
+@{
+    ViewData["Title"] = "Medicine List";
+}
+<style>
+    /* FULL SCREEN + LET LAYOUT BACKGROUND SHOW THROUGH */
+    .med-wrap{
+        max-width:none !important;
+        width:100% !important;
+        margin:0 !important;
+        padding:20px 22px 30px !important;
+        min-height:calc(100vh - 58px);
+        box-sizing:border-box;
+        background: transparent !important; /* <-- KEY FIX: Don't cover pharma-bg */
+    }
+
+    .med-header{ background:linear-gradient(135deg,#065f2e,#0f8a4a); padding:22px 24px; border-radius:14px; color:white; display:flex; justify-content:space-between; align-items:center; box-shadow:0 10px 25px rgba(0,0,0,0.15); }
+    .med-header h4{ margin:0; font-weight:900; font-size:24px; }
+    .med-header p{ margin:4px 0 0; font-size:14px; font-weight:600; color:#e6ffe9; }
+    .med-header a{ background:white !important; color:#065f2e !important; font-weight:900 !important; font-size:14px !important; }
+
+    /* Cards stay solid white so text stays readable over the dim image */
+    .med-card{ background:#ffffff !important; border-radius:14px; overflow:hidden; box-shadow:0 10px 25px rgba(0,0,0,0.10); border:1.5px solid #d1d5db; margin-top:16px; width:100% !important; }
+
+    .med-card input[name="search"]{ font-size:16px !important; font-weight:600 !important; color:#111827 !important; }
+    .med-card button{ font-size:16px !important; font-weight:900 !important; }
+
+    .med-table{ width:100% !important; border-collapse:collapse; }
+    .med-table th{ background:#111827; padding:16px 18px; text-align:left; font-size:13px; font-weight:900; text-transform:uppercase; letter-spacing:0.6px; color:#ffffff; }
+    .med-table td{ padding:17px 18px; border-bottom:1.5px solid #e5e7eb; font-size:16px; vertical-align:middle; color:#111827; font-weight:600; }
+    .med-table tr:hover td{ background:#f0fdf4; }
+
+    .med-table td > div:first-child{ font-size:18px !important; font-weight:900 !important; color:#000 !important; }
+    .med-table td > div:last-child{ font-size:13px !important; font-weight:600 !important; color:#4b5563 !important; margin-top:3px; }
+    .med-table td span[style*="background:#f1f5f9"]{ background:#111827 !important; color:#fff !important; padding:7px 12px !important; border-radius:9px !important; font-size:14px !important; font-weight:800 !important; }
+
+    .qty-pill{ font-weight:900 !important; padding:7px 12px !important; border-radius:20px !important; font-size:14px !important; }
+    .qty-ok{ background:#dcfce7 !important; color:#065f2e !important; border:1.5px solid #16a34a !important; }
+    .qty-low{ background:#fef3c7 !important; color:#92400e !important; border:1.5px solid #d97706 !important; }
+    .qty-out{ background:#fee2e2 !important; color:#991b1b !important; border:1.5px solid #dc2626 !important; }
+
+    .med-table td:nth-child(4){ font-size:18px !important; font-weight:900 !important; color:#065f2e !important; }
+    .med-table td:nth-child(5){ font-size:18px !important; font-weight:900 !important; color:#000 !important; }
+    .med-table td a{ font-size:14px !important; font-weight:800 !important; padding:9px 15px !important; }
+
+    .med-wrap > div:last-child{ display:flex !important; gap:14px !important; width:100% !important; }
+    .med-wrap > div:last-child > div{ flex:1 !important; background:#fff !important; }
+</style>
+<div class="med-wrap">
+    <div class="med-header">
+        <div>
+            <h4>💊 Medicine List</h4>
+            <p style="margin:2px 0 0; opacity:0.9; font-size:13px;">@Model.Count drugs • Name, Dosage, Quantity & Prices</p>
+        </div>
+        <a href="/Products" style="background:white; color:#0f6d2f; padding:10px 16px; border-radius:12px; font-weight:800; text-decoration:none;">← Back to Stock Cards</a>
+    </div>
+
+    <form method="get" class="med-card" style="padding:14px; display:flex; gap:10px; margin-bottom:0;">
+        <input name="search" value="@ViewBag.Search" placeholder="🔍 Search by drug name or dosage..." style="flex:1; border:1.5px solid #e2e8f0; border-radius:12px; padding:11px 14px;" />
+        <button class="btn btn-success" style="border-radius:12px; padding:11px 22px; font-weight:800;">Search</button>
+    </form>
+
+    <div class="med-card">
+        <div style="overflow-x:auto;">
+            <table class="med-table">
+                <thead>
+                    <tr>
+                        <th>Drug Name</th>
+                        <th>Dosage</th>
+                        <th>Quantity Left</th>
+                        <th>Retail Price</th>
+                        <th>Wholesale Price</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach(var p in Model)
+                    {
+                        var retail = p.RetailPrice != 0 ? p.RetailPrice : p.SellingPrice;
+                        var whole = p.WholesalePrice != 0 ? p.WholesalePrice : p.SellingPrice;
+                        <tr>
+                            <td>
+                                <div style="font-weight:800;">@p.Name</div>
+                                <div style="font-size:12px; color:#64748b;">@(p.Category?.Name ?? "No Category") • Batch: @(p.BatchNo ?? "-")</div>
+                            </td>
+                            <td><span style="background:#f1f5f9; padding:5px 10px; border-radius:8px; font-weight:700;">@(p.Dosage ?? "-")</span></td>
+                            <td>
+                                @if(p.Quantity <= 0){ <span class="qty-pill qty-out">0 • Out</span> }
+                                else if(p.Quantity <= p.LowStockLevel){ <span class="qty-pill qty-low">⚠️ @p.Quantity left</span> }
+                                else { <span class="qty-pill qty-ok">✅ @p.Quantity left</span> }
+                            </td>
+                            <td style="font-weight:900; color:#0f6d2f;">₦@retail.ToString("N0")</td>
+                            <td style="font-weight:700;">₦@whole.ToString("N0")</td>
+                            <td>
+                                <a href="/Products/Edit/@p.Id" style="background:#0f6d2f; color:white; padding:7px 14px; border-radius:10px; font-weight:700; font-size:12px; text-decoration:none;">✏️ Edit</a>
+                                <a href="/POS/Sell" style="background:#f1f5f9; padding:7px 12px; border-radius:10px; font-weight:700; font-size:12px; text-decoration:none; color:#0f172a;">Sell →</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div style="display:flex; gap:12px; margin-top:14px;">
+        <div style="flex:1; background:white; padding:14px; border-radius:14px; border:1px solid #eef2f7;"><small style="color:#64748b;">Total Drugs</small><div style="font-size:20px; font-weight:900;">@Model.Count</div></div>
+        <div style="flex:1; background:white; padding:14px; border-radius:14px; border:1px solid #eef2f7;"><small style="color:#64748b;">Low Stock</small><div style="font-size:20px; font-weight:900; color:#d97706;">@Model.Count(x => x.Quantity <= x.LowStockLevel && x.Quantity > 0)</div></div>
+        <div style="flex:1; background:white; padding:14px; border-radius:14px; border:1px solid #eef2f7;"><small style="color:#64748b;">Out of Stock</small><div style="font-size:20px; font-weight:900; color:#dc2626;">@Model.Count(x => x.Quantity <= 0)</div></div>
+    </div>
+</div>

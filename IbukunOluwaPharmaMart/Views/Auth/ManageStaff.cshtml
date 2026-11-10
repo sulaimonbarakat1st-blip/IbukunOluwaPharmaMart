@@ -1,0 +1,150 @@
+﻿@model List<IbukunOluwaPharmaMart.Models.Staff>
+@{
+    ViewData["Title"] = "Staff Management";
+}
+
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+    *{font-family:'Inter',sans-serif}
+    .page-header {
+        background: linear-gradient(135deg, #0f9d58 0%, #0b8043 100%);
+        border-radius: 20px; color: white; padding: 32px;
+    }
+    .stat-card {
+        border-radius: 16px; border: 1px solid #eef2ef;
+        padding: 20px; background: white;
+    }
+    .form-card {
+        border-radius: 20px; border: none;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    }
+    .table-card {
+        border-radius: 20px; overflow: hidden; border: none;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+    }
+    .role-badge-admin { background: #0f9d58; }
+    .role-badge-manager { background: #1976d2; }
+    .role-badge-cashier { background: #ff8f00; }
+    .form-control, .form-select {
+        height: 46px; border-radius: 12px; background: #f9fafb;
+        border: 1.5px solid #e8ecea;
+    }
+    .form-control:focus, .form-select:focus {
+        background: #fff; border-color: #0f9d58;
+        box-shadow: 0 0 0 4px rgba(15,157,88,0.1);
+    }
+</style>
+
+<div class="container-fluid px-4 mt-4" style="max-width:1200px">
+
+    <!-- HEADER -->
+    <div class="page-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold mb-1"><i class="bi bi-people-fill me-2"></i>Staff Management</h3>
+            <p class="mb-0 opacity-75 small">Admin only • Control who can sell, edit prices, or manage inventory</p>
+        </div>
+        <div class="d-none d-md-block">
+            <span class="badge bg-white text-success rounded-pill px-3 py-2 fw-semibold">
+                <i class="bi bi-person-badge"></i> @Context.Session.GetString("FullName") (@Context.Session.GetString("Role"))
+            </span>
+        </div>
+    </div>
+
+    <!-- STATS -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4"><div class="stat-card"><div class="text-muted small fw-semibold">TOTAL STAFF</div><h3 class="fw-bold mb-0">@Model.Count</h3></div></div>
+        <div class="col-md-4"><div class="stat-card"><div class="text-muted small fw-semibold">CASHIERS</div><h3 class="fw-bold mb-0 text-warning">@Model.Count(s => s.Role == "Cashier")</h3></div></div>
+        <div class="col-md-4"><div class="stat-card"><div class="text-muted small fw-semibold">ADMINS & MANAGERS</div><h3 class="fw-bold mb-0 text-success">@Model.Count(s => s.Role != "Cashier")</h3></div></div>
+    </div>
+
+    <!-- ADD FORM -->
+    <div class="card form-card mb-4">
+        <div class="card-body p-4">
+            <h6 class="fw-bold mb-3"><i class="bi bi-person-plus text-success me-1"></i> Add New Staff</h6>
+            <form asp-action="CreateStaff" method="post" class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold text-muted">FULL NAME</label>
+                    <input name="fullname" class="form-control" placeholder="e.g. Tayo Ade" required />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold text-muted">USERNAME</label>
+                    <input name="username" class="form-control" placeholder="cashier1" required />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold text-muted">PASSWORD</label>
+                    <input name="password" class="form-control" placeholder="•••••" required />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold text-muted">ROLE</label>
+                    <select name="role" class="form-select">
+                        <option value="Cashier">Cashier - Sell Only</option>
+                        <option value="Manager">Manager - Edit Prices</option>
+                        <option value="Admin">Admin - Full Access</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-success w-100 rounded-3" style="height:46px; font-weight:600">
+                        <i class="bi bi-check-lg me-1"></i> Create Staff Account
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- TABLE -->
+    <div class="card table-card">
+        <div class="card-body p-0">
+            <div class="p-4 d-flex justify-content-between align-items-center">
+                <h6 class="fw-bold mb-0">All Staff Accounts</h6>
+                <span class="text-muted small">@Model.Count accounts</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead style="background:#f8faf8">
+                        <tr class="small text-muted">
+                            <th class="ps-4 py-3">STAFF</th>
+                            <th>USERNAME</th>
+                            <th>ROLE & PERMISSION</th>
+                            <th class="text-end pe-4">ACTION</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach(var s in Model)
+                        {
+                            var roleClass = s.Role == "Admin" ? "role-badge-admin" : s.Role == "Manager" ? "role-badge-manager" : "role-badge-cashier";
+                            var roleIcon = s.Role == "Admin" ? "shield-check" : s.Role == "Manager" ? "person-gear" : "cart3";
+                            var roleDesc = s.Role == "Admin" ? "Full Access" : s.Role == "Manager" ? "Can edit prices" : "Sell only, no edit";
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center">
+                                    <div class="rounded-circle d-grid place-items-center me-3" style="width:40px;height:40px;background:#e8f5e9;color:#0f9d58;font-weight:700;display:grid;place-items:center">@s.FullName.Substring(0,1).ToUpper()</div>
+                                    <div><div class="fw-semibold">@s.FullName</div><div class="small text-muted">ID: #@s.Id</div></div>
+                                </div>
+                            </td>
+                            <td><code class="bg-light px-2 py-1 rounded">@s.Username</code></td>
+                            <td>
+                                <span class="badge @roleClass rounded-pill px-3 py-2"><i class="bi bi-@roleIcon me-1"></i>@s.Role</span>
+                                <span class="small text-muted ms-2">@roleDesc</span>
+                            </td>
+                            <td class="text-end pe-4">
+                                @if(s.Username != "Admin"){
+                                    <a asp-action="DeleteStaff" asp-route-id="@s.Id" onclick="return confirm('Delete @s.FullName?')" class="btn btn-sm btn-light text-danger rounded-3 border"><i class="bi bi-trash"></i></a>
+                                } else {
+                                    <span class="badge bg-light text-muted border rounded-pill">Protected</span>
+                                }
+                            </td>
+                        </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="alert mt-4 rounded-4 border-0" style="background:#e8f5e9">
+        <div class="d-flex"><i class="bi bi-lightbulb text-success fs-5 me-3"></i>
+        <div class="small"><b>How roles work:</b> <b>Cashier</b> can only open POS and sell, cannot see Cost Price or edit. <b>Manager</b> can edit retail prices but cannot delete staff. <b>Admin</b> can do everything including deleting sales.</div>
+        </div>
+    </div>
+</div>
