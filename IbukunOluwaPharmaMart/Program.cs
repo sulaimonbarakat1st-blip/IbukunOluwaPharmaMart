@@ -16,7 +16,8 @@ if (!string.IsNullOrEmpty(conn) && (conn.StartsWith("postgres://") || conn.Start
 {
     var uri = new Uri(conn);
     var userInfo = uri.UserInfo.Split(':');
-    conn = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.Trim('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true;";
+    var dbPort = uri.Port == -1 ? 5432 : uri.Port;
+conn = $"Host={uri.Host};Port={dbPort};Database={uri.AbsolutePath.Trim('/')};Username={userInfo[0]};Password={Uri.UnescapeDataString(userInfo[1])};SSL Mode=Require;Trust Server Certificate=true;";
 }
 
 // Auto: SQL Server on your PC, PostgreSQL on Render
