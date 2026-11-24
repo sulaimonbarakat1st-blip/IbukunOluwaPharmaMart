@@ -11,6 +11,14 @@ builder.Services.AddControllersWithViews();
 
 var conn = builder.Configuration.GetConnectionString("Default");
 
+// Convert Render postgres:// URL to Npgsql format
+if (!string.IsNullOrEmpty(conn) && (conn.StartsWith("postgres://") || conn.StartsWith("postgresql://")))
+{
+    var uri = new Uri(conn);
+    var userInfo = uri.UserInfo.Split(':');
+    conn = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.Trim('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true;";
+}
+
 // Auto: SQL Server on your PC, PostgreSQL on Render
 if (!string.IsNullOrEmpty(conn) && (conn.Contains("Host=") || conn.Contains("postgres", StringComparison.OrdinalIgnoreCase)))
 {
