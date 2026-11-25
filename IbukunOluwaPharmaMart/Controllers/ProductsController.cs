@@ -13,6 +13,8 @@ namespace IbukunOluwaPharmaMart.Controllers
 
         // --- ADDED: Helper to check role ---
         private bool IsCashier() => HttpContext.Session.GetString("Role") == "Cashier";
+        private bool IsViewer() => HttpContext.Session.GetString("Role") == "Viewer";
+        private bool IsBlocked() => IsCashier() || IsViewer();
         private bool IsNotLoggedIn() => string.IsNullOrEmpty(HttpContext.Session.GetString("Username"));
 
         public async Task<IActionResult> Index(string search)
@@ -21,7 +23,7 @@ namespace IbukunOluwaPharmaMart.Controllers
             if (IsNotLoggedIn()) return RedirectToAction("Login", "Auth");
             if (IsCashier())
             {
-                TempData["Error"] = "You don't have permission to view stock!";
+                TempData["Error"] = "You don't have Permission to view stock!";
                 return RedirectToAction("Index", "Home");
             }
 
@@ -53,9 +55,9 @@ namespace IbukunOluwaPharmaMart.Controllers
         {
             // --- ADDED: BLOCK CASHIER FROM ADD NEW DRUG ---
             if (IsNotLoggedIn()) return RedirectToAction("Login", "Auth");
-            if (IsCashier())
+            if (IsBlocked())
             {
-                TempData["Error"] = "Cashier cannot add new drug!";
+                TempData["Error"] = "You don't have Permission to do this!";
                 return RedirectToAction("Index", "Home");
             }
 
@@ -91,9 +93,9 @@ namespace IbukunOluwaPharmaMart.Controllers
         {
             // --- ADDED: BLOCK CASHIER ---
             if (IsNotLoggedIn()) return RedirectToAction("Login", "Auth");
-            if (IsCashier())
+            if (IsBlocked())
             {
-                TempData["Error"] = "Cashier cannot add new drug!";
+                TempData["Error"] = "You don't have Permission to do this!";
                 return RedirectToAction("Index", "Home");
             }
 
@@ -125,9 +127,9 @@ namespace IbukunOluwaPharmaMart.Controllers
         {
             // --- ADDED: BLOCK CASHIER FROM EDIT ---
             if (IsNotLoggedIn()) return RedirectToAction("Login", "Auth");
-            if (IsCashier())
+            if (IsBlocked())
             {
-                TempData["Error"] = "Cashier cannot edit prices!";
+                TempData["Error"] = "You don't have Permission to do this!";
                 return RedirectToAction("Index", "Home");
             }
 
@@ -142,9 +144,9 @@ namespace IbukunOluwaPharmaMart.Controllers
         {
             // --- ADDED: BLOCK CASHIER ---
             if (IsNotLoggedIn()) return RedirectToAction("Login", "Auth");
-            if (IsCashier())
+            if (IsBlocked())
             {
-                TempData["Error"] = "Cashier cannot edit prices!";
+                TempData["Error"] = "You don't have Permission to do this!";
                 return RedirectToAction("Index", "Home");
             }
 
@@ -176,9 +178,9 @@ namespace IbukunOluwaPharmaMart.Controllers
         {
             // --- ADDED: BLOCK CASHIER FROM DELETE ---
             if (IsNotLoggedIn()) return RedirectToAction("Login", "Auth");
-            if (IsCashier())
+            if (IsBlocked())
             {
-                TempData["Error"] = "Cashier cannot delete drug!";
+                TempData["Error"] = "You don't have Permission to do this!";
                 return RedirectToAction("Index", "Home");
             }
 
