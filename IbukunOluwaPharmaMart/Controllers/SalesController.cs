@@ -12,7 +12,9 @@ namespace IbukunOluwaPharmaMart.Controllers
 
         // --- ADDED: Helper to check role ---
         private bool IsCashier() => HttpContext.Session.GetString("Role") == "Cashier";
+        private bool IsViewer() => HttpContext.Session.GetString("Role") == "Viewer";
         private bool IsNotLoggedIn() => string.IsNullOrEmpty(HttpContext.Session.GetString("Username"));
+        
 
         // --- CHANGED: Report = TODAY ONLY ---
         public async Task<IActionResult> Report()
@@ -42,7 +44,7 @@ namespace IbukunOluwaPharmaMart.Controllers
                 .FirstOrDefault() ?? "N/A";
 
             // --- ADDED: FIX - Hide Profit from Cashier, show only for Admin/Manager ---
-            if (IsCashier())
+            if (IsCashier()|| IsViewer())
             {
                 ViewBag.TotalProfit = 0;
                 ViewBag.IsCashier = true;
@@ -100,7 +102,7 @@ namespace IbukunOluwaPharmaMart.Controllers
             ViewBag.To = to?.ToString("yyyy-MM-dd");
 
             // --- ADDED: FIX - Hide Profit from Cashier, show only for Admin/Manager ---
-            if (IsCashier())
+            if (IsCashier()|| IsViewer())
             {
                 ViewBag.TotalProfit = 0;
                 ViewBag.IsCashier = true;
