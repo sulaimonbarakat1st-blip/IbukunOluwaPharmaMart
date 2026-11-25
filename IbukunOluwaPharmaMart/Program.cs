@@ -1,6 +1,5 @@
-AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);using Microsoft.EntityFrameworkCore;
 using IbukunOluwaPharmaMart.Data;
-
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);using Microsoft.EntityFrameworkCore;
 var builder = WebApplication.CreateBuilder(args);
 var port = Environment.GetEnvironmentVariable("PORT") ?? "5001";
 builder.WebHost.UseUrls($"http://*:{port}");
