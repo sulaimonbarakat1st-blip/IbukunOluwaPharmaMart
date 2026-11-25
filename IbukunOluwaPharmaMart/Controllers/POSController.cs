@@ -9,7 +9,7 @@ namespace IbukunOluwaPharmaMart.Controllers
     {
         private readonly AppDbContext _context;
         public POSController(AppDbContext context) { _context = context; }
-        private bool IsViewer() => HttpContext.Session.GetString("Role") == "Viewer";
+        private bool IsViewer() => (HttpContext.Session.GetString("Role") ?? "").Contains("Viewer");
 
         public async Task<IActionResult> Sell()
         {
@@ -43,7 +43,7 @@ namespace IbukunOluwaPharmaMart.Controllers
                   p.Quantity,
                   p.Dosage,
                   // FIX 4: DON'T SEND COST PRICE TO CASHIER - ADDED
-                  CostPrice = (HttpContext.Session.GetString("Role") == "Cashier" || HttpContext.Session.GetString("Role") == "Viewer") ? 0 : p.CostPrice
+                  CostPrice = (HttpContext.Session.GetString("Role") == "Cashier" || (HttpContext.Session.GetString("Role") ?? "").Contains("Viewer")) ? 0 : p.CostPrice
               })
               .Take(10).ToListAsync();
             return Json(products);
