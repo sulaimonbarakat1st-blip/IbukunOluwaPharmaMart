@@ -1,4 +1,4 @@
-﻿@{
+@{
     ViewData["Title"] = "Staff Login";
     Layout = null;
 }
@@ -114,8 +114,11 @@
             <div class="mb-4">
                 <label class="form-label small fw-semibold text-muted">PASSWORD</label>
                 <div class="input-group">
-                    <span class="input-group-text bg-white border-end-0 rounded-start-3"><i class="bi bi-lock text-muted"></i></span>
-                    <input name="password" type="password" class="form-control border-start-0 rounded-end-3" placeholder="••••••••" required />
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-lock text-muted"></i></span>
+                    <input id="passwordInput" name="password" type="password" class="form-control border-start-0 border-end-0" placeholder="••••••••" required />
+                    <button type="button" class="btn bg-white border rounded-end-3" onclick="togglePassword()" tabindex="-1">
+                        <i id="eyeIcon" class="bi bi-eye text-muted"></i>
+                    </button>
                 </div>
             </div>
 
@@ -137,6 +140,20 @@
         </div>
     </div>
 </div>
+
+<script>
+function togglePassword() {
+    var input = document.getElementById('passwordInput');
+    var icon = document.getElementById('eyeIcon');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'bi bi-eye-slash text-muted';
+    } else {
+        input.type = 'password';
+        icon.className = 'bi bi-eye text-muted';
+    }
+}
+</script>
 
 </body>
 </html>
