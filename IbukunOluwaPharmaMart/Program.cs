@@ -1,4 +1,4 @@
-using Microsoft.EntityFrameworkCore;
+AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);using Microsoft.EntityFrameworkCore;
 using IbukunOluwaPharmaMart.Data;
 
 var builder = WebApplication.CreateBuilder(args);
