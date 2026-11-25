@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using IbukunOluwaPharmaMart.Data;
 using IbukunOluwaPharmaMart.Models;
@@ -9,6 +9,7 @@ namespace IbukunOluwaPharmaMart.Controllers
     {
         private readonly AppDbContext _context;
         public POSController(AppDbContext context) { _context = context; }
+        private bool IsViewer() => HttpContext.Session.GetString("Role") == "Viewer";
 
         public async Task<IActionResult> Sell()
         {
@@ -42,7 +43,7 @@ namespace IbukunOluwaPharmaMart.Controllers
                   p.Quantity,
                   p.Dosage,
                   // FIX 4: DON'T SEND COST PRICE TO CASHIER - ADDED
-                  CostPrice = HttpContext.Session.GetString("Role") == "Cashier" ? 0 : p.CostPrice
+                  CostPrice = (HttpContext.Session.GetString("Role") == "Cashier" || HttpContext.Session.GetString("Role") == "Viewer") ? 0 : p.CostPrice
               })
               .Take(10).ToListAsync();
             return Json(products);
@@ -51,6 +52,7 @@ namespace IbukunOluwaPharmaMart.Controllers
         [HttpPost]
         public async Task<IActionResult> Checkout([FromBody] CheckoutRequestDto request)
         {
+            if (IsViewer()) return Json(new { success = false, message = "Viewer cannot do this - view only!" });
             if (request.Items == null || !request.Items.Any()) return Json(new { success = false, message = "Cart empty" });
 
             var sale = new Sale
@@ -91,6 +93,7 @@ namespace IbukunOluwaPharmaMart.Controllers
         [HttpPost]
         public async Task<IActionResult> SuspendSale([FromBody] List<CartDto> cart)
         {
+            if (IsViewer()) return Json(new { success = false, message = "Viewer cannot do this - view only!" });
             try
             {
                 if (cart == null || !cart.Any()) return Json(new { success = false, message = "Cart empty" });
@@ -134,6 +137,7 @@ namespace IbukunOluwaPharmaMart.Controllers
         [HttpPost]
         public async Task<IActionResult> PayDebt(int saleId, decimal amount)
         {
+            if (IsViewer()) return Json(new { success = false, message = "Viewer cannot do this - view only!" });
             var sale = await _context.Sales.FindAsync(saleId);
             if (sale == null) return Json(new { success = false });
             sale.AmountPaid += amount;
@@ -147,6 +151,7 @@ namespace IbukunOluwaPharmaMart.Controllers
         [HttpPost]
         public async Task<IActionResult> UpdateDebtorInfo(int saleId, string customerName, string customerPhone)
         {
+            if (IsViewer()) return Json(new { success = false, message = "Viewer cannot do this - view only!" });
             var sale = await _context.Sales.FindAsync(saleId);
             if (sale == null) return Json(new { success = false });
             sale.CustomerName = customerName;
