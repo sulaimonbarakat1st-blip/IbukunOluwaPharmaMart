@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using IbukunOluwaPharmaMart.Data;
 using IbukunOluwaPharmaMart.Models;
@@ -12,7 +12,7 @@ namespace IbukunOluwaPharmaMart.Controllers
 
         // --- ADDED: Helper to check role ---
         private bool IsCashier() => HttpContext.Session.GetString("Role") == "Cashier";
-        private bool IsViewer() => HttpContext.Session.GetString("Role") == "Viewer";
+        private bool IsViewer() => (HttpContext.Session.GetString("Role") ?? "").Contains("Viewer");
         private bool IsNotLoggedIn() => string.IsNullOrEmpty(HttpContext.Session.GetString("Username"));
         
 
